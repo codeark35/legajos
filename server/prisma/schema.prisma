@@ -1,0 +1,387 @@
+// This is your Prisma schema file for Sistema de Legajos - Universidad Nacional de Itapúa
+// Learn more about Prisma: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ============================================================================
+// MODELO PRINCIPAL: PERSONAS
+// ============================================================================
+
+model Persona {
+  id                String    @id @default(uuid())
+  numeroCedula      String    @unique @map("numero_cedula")
+  nombres           String
+  apellidos         String
+  fechaNacimiento   DateTime? @map("fecha_nacimiento") @db.Date
+  direccion         String?
+  telefono          String?
+  email             String?
+  estado            EstadoPersona @default(ACTIVO)
+  
+  // Timestamps
+  createdAt         DateTime  @default(now()) @map("created_at")
+  updatedAt         DateTime  @updatedAt @map("updated_at")
+  
+  // Relaciones
+  legajos           Legajo[]
+  
+  @@map("personas")
+  @@index([numeroCedula])
+  @@index([apellidos, nombres])
+}
+
+enum EstadoPersona {
+  ACTIVO
+  INACTIVO
+  SUSPENDIDO
+}
+
+// ============================================================================
+// LEGAJOS
+// ============================================================================
+
+model Legajo {
+  id                String    @id @default(uuid())
+  numeroLegajo      String?   @unique @map("numero_legajo")
+  personaId         String    @map("persona_id")
+  tipoLegajo        TipoLegajo @default(DOCENTE) @map("tipo_legajo")
+  facultadId        String?   @map("facultad_id")
+  fechaApertura     DateTime  @default(now()) @map("fecha_apertura") @db.Date
+  estadoLegajo      EstadoLegajo @default(ACTIVO) @map("estado_legajo")
+  observaciones     String?   @db.Text
+  
+  // Timestamps
+  createdAt         DateTime  @default(now()) @map("created_at")
+  updatedAt         DateTime  @updatedAt @map("updated_at")
+  
+  // Relaciones
+  persona           Persona   @relation(fields: [personaId], references: [id], onDelete: Cascade)
+  facultad          Facultad? @relation(fields: [facultadId], references: [id])
+  nombramientos     Nombramiento[]
+  documentos        Documento[]
+  
+  @@map("legajos")
+  @@index([personaId])
+  @@index([numeroLegajo])
+  @@index([estadoLegajo])
+}
+
+enum TipoLegajo {
+  DOCENTE
+  ADMINISTRATIVO
+  TECNICO
+  DIRECTIVO
+  OTRO
+}
+
+enum EstadoLegajo {
+  ACTIVO
+  CERRADO
+  SUSPENDIDO
+  ARCHIVADO
+}
+
+// ============================================================================
+// NOMBRAMIENTOS
+// ============================================================================
+
+model Nombramiento {
+  id                    String    @id @default(uuid())
+  legajoId              String    @map("legajo_id")
+  cargoId               String?   @map("cargo_id")
+  tipoNombramiento      String    @map("tipo_nombramiento") // "Docente Técnico", "Director de Carrera", etc.
+  categoria             String?   // Categoría general si aplica
+  fechaInicio           DateTime  @map("fecha_inicio") @db.Date
+  fechaFin              DateTime? @map("fecha_fin") @db.Date
+  resolucionNumero      String?   @map("resolucion_numero")
+  resolucionFecha       DateTime? @map("resolucion_fecha") @db.Date
+  resolucionId          String?   @map("resolucion_id")
+  salarioMensual        Decimal?  @map("salario_mensual") @db.Decimal(15, 2)
+  moneda                String    @default("PYG")
+  estadoNombramiento    EstadoNombramiento @default(VIGENTE) @map("estado_nombramiento")
+  observaciones         String?   @db.Text
+  
+  // Timestamps
+  createdAt             DateTime  @default(now()) @map("created_at")
+  updatedAt             DateTime  @updatedAt @map("updated_at")
+  
+  // Relaciones
+  legajo                Legajo    @relation(fields: [legajoId], references: [id], onDelete: Cascade)
+  cargo                 Cargo?    @relation(fields: [cargoId], references: [id])
+  resolucion            Resolucion? @relation(fields: [resolucionId], references: [id])
+  asignacionesSalariales AsignacionSalarial[]
+  
+  @@map("nombramientos")
+  @@index([legajoId])
+  @@index([fechaInicio, fechaFin])
+  @@index([estadoNombramiento])
+  @@index([resolucionNumero])
+}
+
+enum EstadoNombramiento {
+  VIGENTE
+  FINALIZADO
+  SUSPENDIDO
+  CANCELADO
+}
+
+// ============================================================================
+// ASIGNACIONES SALARIALES
+// ============================================================================
+
+model AsignacionSalarial {
+  id                      String    @id @default(uuid())
+  nombramientoId          String    @map("nombramiento_id")
+  categoriaPresupuestariaId String? @map("categoria_presupuestaria_id")
+  categoriaPresupuestaria String    @map("categoria_presupuestaria") // L33, UU5, L23, B06, etc.
+  monto                   Decimal   @db.Decimal(15, 2)
+  moneda                  String    @default("PYG")
+  fechaDesde              DateTime  @map("fecha_desde") @db.Date
+  fechaHasta              DateTime? @map("fecha_hasta") @db.Date
+  descripcion             String?   @db.Text
+  
+  // Timestamps
+  createdAt               DateTime  @default(now()) @map("created_at")
+  updatedAt               DateTime  @updatedAt @map("updated_at")
+  
+  // Relaciones
+  nombramiento            Nombramiento @relation(fields: [nombramientoId], references: [id], onDelete: Cascade)
+  categoriaPresupuestariaObj CategoriaPresupuestaria? @relation(fields: [categoriaPresupuestariaId], references: [id])
+  
+  @@map("asignaciones_salariales")
+  @@index([nombramientoId])
+  @@index([fechaDesde, fechaHasta])
+  @@index([categoriaPresupuestaria])
+}
+
+// ============================================================================
+// CATEGORÍAS PRESUPUESTARIAS
+// ============================================================================
+
+model CategoriaPresupuestaria {
+  id                  String    @id @default(uuid())
+  codigoCategoria     String    @unique @map("codigo_categoria") // L33, UU5, B06, L11, L06, L23
+  descripcion         String    @db.Text
+  rangoSalarialMin    Decimal?  @map("rango_salarial_min") @db.Decimal(15, 2)
+  rangoSalarialMax    Decimal?  @map("rango_salarial_max") @db.Decimal(15, 2)
+  vigente             Boolean   @default(true)
+  
+  // Timestamps
+  createdAt           DateTime  @default(now()) @map("created_at")
+  updatedAt           DateTime  @updatedAt @map("updated_at")
+  
+  // Relaciones
+  asignaciones        AsignacionSalarial[]
+  
+  @@map("categorias_presupuestarias")
+  @@index([codigoCategoria])
+  @@index([vigente])
+}
+
+// ============================================================================
+// CARGOS
+// ============================================================================
+
+model Cargo {
+  id                String    @id @default(uuid())
+  nombreCargo       String    @map("nombre_cargo")
+  descripcion       String?   @db.Text
+  nivelJerarquico   Int?      @map("nivel_jerarquico")
+  departamentoArea  String?   @map("departamento_area")
+  
+  // Timestamps
+  createdAt         DateTime  @default(now()) @map("created_at")
+  updatedAt         DateTime  @updatedAt @map("updated_at")
+  
+  // Relaciones
+  nombramientos     Nombramiento[]
+  
+  @@map("cargos")
+  @@index([nombreCargo])
+}
+
+// ============================================================================
+// FACULTADES Y DEPENDENCIAS
+// ============================================================================
+
+model Facultad {
+  id              String    @id @default(uuid())
+  nombreFacultad  String    @map("nombre_facultad")
+  codigo          String?   @unique
+  tipo            TipoFacultad @default(FACULTAD)
+  descripcion     String?   @db.Text
+  
+  // Timestamps
+  createdAt       DateTime  @default(now()) @map("created_at")
+  updatedAt       DateTime  @updatedAt @map("updated_at")
+  
+  // Relaciones
+  legajos         Legajo[]
+  
+  @@map("facultades_dependencias")
+  @@index([codigo])
+  @@index([nombreFacultad])
+}
+
+enum TipoFacultad {
+  FACULTAD
+  DEPARTAMENTO
+  CENTRO
+  INSTITUTO
+  DIRECCION
+}
+
+// ============================================================================
+// DOCUMENTOS
+// ============================================================================
+
+model Documento {
+  id                    String    @id @default(uuid())
+  legajoId              String    @map("legajo_id")
+  tipoDocumento         TipoDocumento @map("tipo_documento")
+  nombreArchivo         String    @map("nombre_archivo")
+  rutaArchivo           String    @map("ruta_archivo")
+  extension             String
+  tamanioBytes          BigInt    @map("tamanio_bytes")
+  numeroPaginaOriginal  Int?      @map("numero_pagina_original")
+  fechaDocumento        DateTime? @map("fecha_documento") @db.Date
+  fechaCarga            DateTime  @default(now()) @map("fecha_carga")
+  descripcion           String?   @db.Text
+  tags                  String[]  @default([])
+  procesadoOCR          Boolean   @default(false) @map("procesado_ocr")
+  
+  // Timestamps
+  createdAt             DateTime  @default(now()) @map("created_at")
+  updatedAt             DateTime  @updatedAt @map("updated_at")
+  
+  // Relaciones
+  legajo                Legajo    @relation(fields: [legajoId], references: [id], onDelete: Cascade)
+  paginas               DocumentoPagina[]
+  
+  @@map("documentos")
+  @@index([legajoId])
+  @@index([tipoDocumento])
+  @@index([fechaDocumento])
+  @@index([tags])
+}
+
+enum TipoDocumento {
+  NOMBRAMIENTO
+  RESOLUCION
+  CERTIFICADO
+  CONTRATO
+  ACTA
+  MEMORANDUM
+  NOTA
+  CURRICULUM
+  TITULO
+  CEDULA
+  OTRO
+}
+
+// ============================================================================
+// PÁGINAS DE DOCUMENTOS (Para documentos multipágina)
+// ============================================================================
+
+model DocumentoPagina {
+  id                String    @id @default(uuid())
+  documentoId       String    @map("documento_id")
+  numeroPagina      Int       @map("numero_pagina")
+  rutaImagen        String    @map("ruta_imagen")
+  textoExtraidoOCR  String?   @map("texto_extraido_ocr") @db.Text
+  procesado         Boolean   @default(false)
+  
+  // Timestamps
+  createdAt         DateTime  @default(now()) @map("created_at")
+  updatedAt         DateTime  @updatedAt @map("updated_at")
+  
+  // Relaciones
+  documento         Documento @relation(fields: [documentoId], references: [id], onDelete: Cascade)
+  
+  @@unique([documentoId, numeroPagina])
+  @@map("documentos_paginas")
+  @@index([documentoId])
+  @@index([numeroPagina])
+}
+
+// ============================================================================
+// RESOLUCIONES
+// ============================================================================
+
+model Resolucion {
+  id                  String    @id @default(uuid())
+  numeroResolucion    String    @unique @map("numero_resolucion")
+  fechaResolucion     DateTime  @map("fecha_resolucion") @db.Date
+  tipoResolucion      String    @map("tipo_resolucion")
+  descripcion         String?   @db.Text
+  autoridadFirmante   String?   @map("autoridad_firmante")
+  archivoAdjunto      String?   @map("archivo_adjunto")
+  
+  // Timestamps
+  createdAt           DateTime  @default(now()) @map("created_at")
+  updatedAt           DateTime  @updatedAt @map("updated_at")
+  
+  // Relaciones
+  nombramientos       Nombramiento[]
+  
+  @@map("resoluciones")
+  @@index([numeroResolucion])
+  @@index([fechaResolucion])
+}
+
+// ============================================================================
+// HISTORIAL DE CAMBIOS (Auditoría)
+// ============================================================================
+
+model HistorialCambio {
+  id                  String    @id @default(uuid())
+  tablaAfectada       String    @map("tabla_afectada")
+  idRegistroAfectado  String    @map("id_registro_afectado")
+  campoModificado     String    @map("campo_modificado")
+  valorAnterior       String?   @map("valor_anterior") @db.Text
+  valorNuevo          String?   @map("valor_nuevo") @db.Text
+  usuarioModificacion String?   @map("usuario_modificacion")
+  fechaModificacion   DateTime  @default(now()) @map("fecha_modificacion")
+  motivo              String?   @db.Text
+  ipAddress           String?   @map("ip_address")
+  
+  @@map("historial_cambios")
+  @@index([tablaAfectada, idRegistroAfectado])
+  @@index([fechaModificacion])
+  @@index([usuarioModificacion])
+}
+
+// ============================================================================
+// USUARIOS DEL SISTEMA (Opcional - para control de acceso)
+// ============================================================================
+
+model Usuario {
+  id            String    @id @default(uuid())
+  email         String    @unique
+  nombreUsuario String    @map("nombre_usuario")
+  passwordHash  String    @map("password_hash")
+  rol           RolUsuario @default(USUARIO)
+  activo        Boolean   @default(true)
+  
+  // Timestamps
+  createdAt     DateTime  @default(now()) @map("created_at")
+  updatedAt     DateTime  @updatedAt @map("updated_at")
+  ultimoAcceso  DateTime? @map("ultimo_acceso")
+  
+  @@map("usuarios")
+  @@index([email])
+}
+
+enum RolUsuario {
+  ADMIN
+  RECURSOS_HUMANOS
+  CONSULTA
+  USUARIO
+}

@@ -1,0 +1,55 @@
+name: legajos_server
+services:
+  # Base de datos PostgreSQL
+  postgres:
+    image: postgres:15-alpine
+    container_name: legajos_db
+    env_file:
+      - .env
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - legajos_postgres_data:/var/lib/postgresql/data 
+    networks:
+      - legajos_network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+
+  # Aplicación Backend
+  backend:
+    build: .
+    container_name: legajos_backend
+    env_file:
+      - .env
+    environment:
+      DATABASE_URL: "postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}"
+      JWT_SECRET: ${JWT_SECRET}
+      JWT_EXPIRES_IN: ${JWT_EXPIRES_IN}
+      PORT: 3000
+      NODE_ENV: ${NODE_ENV:-development}
+    ports:
+      - "${PORT:-3020}:3000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+     
+    networks:
+      - legajos_network
+    restart: unless-stopped
+
+
+
+volumes:
+  legajos_postgres_data:
+
+networks:
+  legajos_network:
+    name: legajos_network
+    driver: bridge
