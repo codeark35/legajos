@@ -103,8 +103,9 @@ model Nombramiento {
   resolucionNumero      String?   @map("resolucion_numero")
   resolucionFecha       DateTime? @map("resolucion_fecha") @db.Date
   resolucionId          String?   @map("resolucion_id")
-  salarioMensual        Decimal?  @map("salario_mensual") @db.Decimal(15, 2)
+  salarioBase           Decimal?  @map("salario_base") @db.Decimal(15, 2)
   moneda                String    @default("PYG")
+  vigente               Boolean   @default(true)
   estadoNombramiento    EstadoNombramiento @default(VIGENTE) @map("estado_nombramiento")
   observaciones         String?   @db.Text
   
@@ -116,13 +117,14 @@ model Nombramiento {
   legajo                Legajo    @relation(fields: [legajoId], references: [id], onDelete: Cascade)
   cargo                 Cargo?    @relation(fields: [cargoId], references: [id])
   resolucion            Resolucion? @relation(fields: [resolucionId], references: [id])
-  asignacionesSalariales AsignacionSalarial[]
+  asignacionPresupuestaria AsignacionPresupuestaria?
   
   @@map("nombramientos")
   @@index([legajoId])
   @@index([fechaInicio, fechaFin])
   @@index([estadoNombramiento])
   @@index([resolucionNumero])
+  @@index([vigente, fechaInicio])
 }
 
 enum EstadoNombramiento {
@@ -133,32 +135,65 @@ enum EstadoNombramiento {
 }
 
 // ============================================================================
-// ASIGNACIONES SALARIALES
+// LÍNEAS PRESUPUESTARIAS
 // ============================================================================
 
-model AsignacionSalarial {
-  id                      String    @id @default(uuid())
-  nombramientoId          String    @map("nombramiento_id")
-  categoriaPresupuestariaId String? @map("categoria_presupuestaria_id")
-  categoriaPresupuestaria String    @map("categoria_presupuestaria") // L33, UU5, L23, B06, etc.
-  monto                   Decimal   @db.Decimal(15, 2)
-  moneda                  String    @default("PYG")
-  fechaDesde              DateTime  @map("fecha_desde") @db.Date
-  fechaHasta              DateTime? @map("fecha_hasta") @db.Date
-  descripcion             String?   @db.Text
+model LineaPresupuestaria {
+  id                String    @id @default(uuid())
+  codigoLinea       String    @unique @map("codigo_linea") // "100", "200", "300"
+  descripcion       String?   @db.Text
+  tipo              String?   // "DOCENTE", "ADMINISTRATIVO", "TECNICO"
+  vigente           Boolean   @default(true)
   
   // Timestamps
-  createdAt               DateTime  @default(now()) @map("created_at")
-  updatedAt               DateTime  @updatedAt @map("updated_at")
+  createdAt         DateTime  @default(now()) @map("created_at")
+  updatedAt         DateTime  @updatedAt @map("updated_at")
   
   // Relaciones
-  nombramiento            Nombramiento @relation(fields: [nombramientoId], references: [id], onDelete: Cascade)
-  categoriaPresupuestariaObj CategoriaPresupuestaria? @relation(fields: [categoriaPresupuestariaId], references: [id])
+  asignaciones      AsignacionPresupuestaria[]
   
-  @@map("asignaciones_salariales")
+  @@map("lineas_presupuestarias")
+  @@index([codigoLinea])
+  @@index([vigente])
+}
+
+// ============================================================================
+// ASIGNACIONES PRESUPUESTARIAS (con histórico mensual en JSONB)
+// ============================================================================
+
+model AsignacionPresupuestaria {
+  id                          String    @id @default(uuid())
+  nombramientoId              String    @unique @map("nombramiento_id")
+  categoriaPresupuestariaId   String?   @map("categoria_presupuestaria_id")
+  lineaPresupuestariaId       String?   @map("linea_presupuestaria_id")
+  objetoGasto                 String?   @map("objeto_gasto") // Código de objeto de gasto
+  
+  // Datos base de la asignación
+  salarioBase                 Decimal   @map("salario_base") @db.Decimal(15, 2)
+  moneda                      String    @default("PYG")
+  
+  // HISTÓRICO MENSUAL EN JSONB - Clave del sistema
+  // Estructura: {"2024": {"01": {presupuestado, devengado, aportes...}, "02": {...}}, "2025": {...}}
+  historicoMensual            Json      @default("{}") @map("historico_mensual")
+  
+  // Auditoría
+  fechaCreacion               DateTime  @default(now()) @map("fecha_creacion")
+  fechaUltimaActualizacion    DateTime  @updatedAt @map("fecha_ultima_actualizacion")
+  usuarioUltimaActualizacion  String?   @map("usuario_ultima_actualizacion")
+  
+  // Timestamps
+  createdAt                   DateTime  @default(now()) @map("created_at")
+  updatedAt                   DateTime  @updatedAt @map("updated_at")
+  
+  // Relaciones
+  nombramiento                Nombramiento @relation(fields: [nombramientoId], references: [id], onDelete: Cascade)
+  categoriaPresupuestaria     CategoriaPresupuestaria? @relation(fields: [categoriaPresupuestariaId], references: [id])
+  lineaPresupuestaria         LineaPresupuestaria? @relation(fields: [lineaPresupuestariaId], references: [id])
+  
+  @@map("asignaciones_presupuestarias")
   @@index([nombramientoId])
-  @@index([fechaDesde, fechaHasta])
-  @@index([categoriaPresupuestaria])
+  @@index([categoriaPresupuestariaId])
+  @@index([lineaPresupuestariaId])
 }
 
 // ============================================================================
@@ -169,6 +204,8 @@ model CategoriaPresupuestaria {
   id                  String    @id @default(uuid())
   codigoCategoria     String    @unique @map("codigo_categoria") // L33, UU5, B06, L11, L06, L23
   descripcion         String    @db.Text
+  tipo                String?   // "DOCENTE", "ADMINISTRATIVO", etc.
+  escalaSalarial      String?   @map("escala_salarial") // "UNIVERSITARIA", "ADMINISTRATIVA"
   rangoSalarialMin    Decimal?  @map("rango_salarial_min") @db.Decimal(15, 2)
   rangoSalarialMax    Decimal?  @map("rango_salarial_max") @db.Decimal(15, 2)
   vigente             Boolean   @default(true)
@@ -178,11 +215,12 @@ model CategoriaPresupuestaria {
   updatedAt           DateTime  @updatedAt @map("updated_at")
   
   // Relaciones
-  asignaciones        AsignacionSalarial[]
+  asignaciones        AsignacionPresupuestaria[]
   
   @@map("categorias_presupuestarias")
   @@index([codigoCategoria])
   @@index([vigente])
+  @@index([tipo])
 }
 
 // ============================================================================
@@ -224,10 +262,35 @@ model Facultad {
   
   // Relaciones
   legajos         Legajo[]
+  dependencias    DependenciaAcademica[]
   
   @@map("facultades_dependencias")
   @@index([codigo])
   @@index([nombreFacultad])
+}
+
+// ============================================================================
+// DEPENDENCIAS ACADÉMICAS
+// ============================================================================
+
+model DependenciaAcademica {
+  id              String    @id @default(uuid())
+  facultadId      String    @map("facultad_id")
+  nombre          String
+  codigo          String?   @unique
+  tipo            String?   // "CARRERA", "DEPARTAMENTO", "CATEDRA"
+  descripcion     String?   @db.Text
+  
+  // Timestamps
+  createdAt       DateTime  @default(now()) @map("created_at")
+  updatedAt       DateTime  @updatedAt @map("updated_at")
+  
+  // Relaciones
+  facultad        Facultad  @relation(fields: [facultadId], references: [id], onDelete: Cascade)
+  
+  @@map("dependencias_academicas")
+  @@index([facultadId])
+  @@index([codigo])
 }
 
 enum TipoFacultad {

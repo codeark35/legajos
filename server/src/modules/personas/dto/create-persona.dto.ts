@@ -1,79 +1,48 @@
-import { IsString, IsNotEmpty, MinLength, MaxLength, IsEmail, IsOptional, IsEnum, IsDateString } from 'class-validator';
+import { IsString, IsEmail, IsOptional, IsEnum, MinLength, IsDateString } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { EstadoPersona } from '@prisma/client';
 
 export class CreatePersonaDto {
-  @ApiProperty({
-    description: 'Número de cédula de identidad',
-    example: '1234567',
-  })
+  @ApiProperty({ description: 'Número de cédula', example: '1234567' })
   @IsString()
-  @IsNotEmpty({ message: 'El número de cédula es requerido' })
-  @MinLength(1)
-  @MaxLength(20)
+  @MinLength(6, { message: 'El número de cédula debe tener al menos 6 caracteres' })
   numeroCedula: string;
 
-  @ApiProperty({
-    description: 'Nombres de la persona',
-    example: 'Juan Carlos',
-  })
+  @ApiProperty({ description: 'Nombres', example: 'Juan Carlos' })
   @IsString()
-  @IsNotEmpty({ message: 'Los nombres son requeridos' })
   @MinLength(2, { message: 'Los nombres deben tener al menos 2 caracteres' })
-  @MaxLength(100)
   nombres: string;
 
-  @ApiProperty({
-    description: 'Apellidos de la persona',
-    example: 'González López',
-  })
+  @ApiProperty({ description: 'Apellidos', example: 'Pérez González' })
   @IsString()
-  @IsNotEmpty({ message: 'Los apellidos son requeridos' })
   @MinLength(2, { message: 'Los apellidos deben tener al menos 2 caracteres' })
-  @MaxLength(100)
   apellidos: string;
 
-  @ApiPropertyOptional({
-    description: 'Fecha de nacimiento',
-    example: '1990-01-15',
-  })
+  @ApiPropertyOptional({ description: 'Fecha de nacimiento', example: '1990-01-15' })
   @IsOptional()
-  @IsDateString()
+  @IsDateString({}, { message: 'Fecha de nacimiento inválida' })
   fechaNacimiento?: string;
 
-  @ApiPropertyOptional({
-    description: 'Dirección de domicilio',
-    example: 'Av. Principal 123',
-  })
+  @ApiPropertyOptional({ description: 'Dirección', example: 'Av. Principal 123' })
   @IsOptional()
   @IsString()
-  @MaxLength(500)
   direccion?: string;
 
-  @ApiPropertyOptional({
-    description: 'Número de teléfono',
-    example: '0981123456',
-  })
+  @ApiPropertyOptional({ description: 'Teléfono', example: '0981-123456' })
   @IsOptional()
   @IsString()
-  @MaxLength(50)
   telefono?: string;
 
-  @ApiPropertyOptional({
-    description: 'Correo electrónico',
-    example: 'juan.gonzalez@example.com',
-  })
+  @ApiPropertyOptional({ description: 'Email', example: 'juan.perez@example.com' })
   @IsOptional()
-  @IsEmail({}, { message: 'Debe proporcionar un email válido' })
-  @MaxLength(100)
+  @IsEmail({}, { message: 'Email inválido' })
   email?: string;
 
   @ApiPropertyOptional({
     description: 'Estado de la persona',
-    enum: EstadoPersona,
-    example: EstadoPersona.ACTIVO,
+    enum: ['ACTIVO', 'INACTIVO', 'SUSPENDIDO'],
+    default: 'ACTIVO',
   })
   @IsOptional()
-  @IsEnum(EstadoPersona)
-  estado?: EstadoPersona;
+  @IsEnum(['ACTIVO', 'INACTIVO', 'SUSPENDIDO'])
+  estado?: 'ACTIVO' | 'INACTIVO' | 'SUSPENDIDO';
 }

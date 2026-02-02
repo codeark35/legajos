@@ -1,41 +1,24 @@
-import { IsString, IsNotEmpty, IsOptional, IsEnum, MaxLength } from 'class-validator';
-import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { TipoFacultad } from '@prisma/client';
+import { IsString, IsNotEmpty, MinLength, MaxLength } from 'class-validator';
+import { ApiProperty } from '@nestjs/swagger';
 
 export class CreateFacultadDto {
   @ApiProperty({
-    description: 'Nombre de la facultad o dependencia',
-    example: 'Facultad de Ciencias Económicas',
+    description: 'Nombre de la facultad',
+    example: 'Facultad de Ciencias Exactas',
+    minLength: 3,
+    maxLength: 150,
   })
   @IsString()
-  @IsNotEmpty({ message: 'El nombre de la facultad es requerido' })
-  @MaxLength(200)
+  @IsNotEmpty()
+  @MinLength(3)
+  @MaxLength(150)
   nombreFacultad: string;
 
-  @ApiPropertyOptional({
-    description: 'Código único de la facultad',
-    example: 'FCE',
-  })
-  @IsOptional()
-  @IsString()
-  @MaxLength(20)
-  codigo?: string;
-
   @ApiProperty({
-    description: 'Tipo de dependencia',
-    enum: TipoFacultad,
-    example: TipoFacultad.FACULTAD,
+    description: 'Código de la facultad',
+    example: 'FCE',
+    required: false,
   })
-  @IsEnum(TipoFacultad)
-  @IsNotEmpty({ message: 'El tipo de facultad es requerido' })
-  tipo: TipoFacultad;
-
-  @ApiPropertyOptional({
-    description: 'Descripción adicional',
-    example: 'Facultad encargada de formar profesionales en ciencias económicas',
-  })
-  @IsOptional()
   @IsString()
-  @MaxLength(1000)
-  descripcion?: string;
+  codigo?: string;
 }

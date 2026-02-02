@@ -9,9 +9,8 @@ import { map } from 'rxjs/operators';
 
 export interface Response<T> {
   success: boolean;
-  message: string;
   data: T;
-  timestamp: Date;
+  timestamp: string;
 }
 
 @Injectable()
@@ -25,9 +24,8 @@ export class TransformInterceptor<T>
     return next.handle().pipe(
       map((data) => ({
         success: true,
-        message: 'Operación exitosa',
         data,
-        timestamp: new Date(),
+        timestamp: new Date().toISOString(),
       })),
     );
   }

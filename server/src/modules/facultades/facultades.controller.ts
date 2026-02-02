@@ -6,7 +6,6 @@ import {
   Patch,
   Param,
   Delete,
-  Query,
   UseGuards,
   HttpCode,
   HttpStatus,
@@ -21,110 +20,61 @@ import {
 import { FacultadesService } from './facultades.service';
 import { CreateFacultadDto } from './dto/create-facultad.dto';
 import { UpdateFacultadDto } from './dto/update-facultad.dto';
-import { QueryFacultadDto } from './dto/query-facultad.dto';
-import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../../common/guards/roles.guard';
 import { Roles } from '../../common/decorators/roles.decorator';
 
-@ApiTags('Facultades')
-@ApiBearerAuth('JWT-auth')
-@UseGuards(JwtAuthGuard, RolesGuard)
 @Controller('facultades')
+@ApiTags('Facultades')
+@UseGuards(JwtAuthGuard, RolesGuard)
+@ApiBearerAuth('JWT-auth')
 export class FacultadesController {
   constructor(private readonly facultadesService: FacultadesService) {}
 
   @Post()
   @Roles('ADMIN', 'RECURSOS_HUMANOS')
-  @ApiOperation({ summary: 'Crear nueva facultad o dependencia' })
-  @ApiResponse({
-    status: 201,
-    description: 'Facultad creada exitosamente',
-  })
-  @ApiResponse({
-    status: 409,
-    description: 'Ya existe una facultad con ese código',
-  })
+  @ApiOperation({ summary: 'Crear nueva facultad' })
+  @ApiResponse({ status: 201, description: 'Facultad creada exitosamente' })
+  @ApiResponse({ status: 409, description: 'Ya existe una facultad con ese nombre' })
   create(@Body() createFacultadDto: CreateFacultadDto) {
     return this.facultadesService.create(createFacultadDto);
   }
 
   @Get()
-  @ApiOperation({ summary: 'Listar todas las facultades con paginación y filtros' })
-  @ApiResponse({
-    status: 200,
-    description: 'Lista paginada de facultades',
-  })
-  findAll(@Query() query: QueryFacultadDto) {
-    return this.facultadesService.findAll(query);
-  }
-
-  @Get('stats')
-  @ApiOperation({ summary: 'Obtener estadísticas de facultades' })
-  @ApiResponse({
-    status: 200,
-    description: 'Estadísticas de facultades por tipo',
-  })
-  getStats() {
-    return this.facultadesService.getStats();
+  @Roles('ADMIN', 'RECURSOS_HUMANOS', 'CONSULTA', 'USUARIO')
+  @ApiOperation({ summary: 'Listar todas las facultades' })
+  @ApiResponse({ status: 200, description: 'Lista de facultades' })
+  findAll() {
+    return this.facultadesService.findAll();
   }
 
   @Get(':id')
-  @ApiOperation({ summary: 'Obtener detalle de una facultad' })
-  @ApiParam({
-    name: 'id',
-    description: 'ID de la facultad',
-  })
-  @ApiResponse({
-    status: 200,
-    description: 'Facultad encontrada con sus legajos',
-  })
-  @ApiResponse({
-    status: 404,
-    description: 'Facultad no encontrada',
-  })
+  @Roles('ADMIN', 'RECURSOS_HUMANOS', 'CONSULTA', 'USUARIO')
+  @ApiOperation({ summary: 'Obtener facultad por ID' })
+  @ApiParam({ name: 'id', description: 'ID de la facultad' })
+  @ApiResponse({ status: 200, description: 'Facultad encontrada' })
+  @ApiResponse({ status: 404, description: 'Facultad no encontrada' })
   findOne(@Param('id') id: string) {
     return this.facultadesService.findOne(id);
   }
 
   @Patch(':id')
   @Roles('ADMIN', 'RECURSOS_HUMANOS')
-  @ApiOperation({ summary: 'Actualizar datos de una facultad' })
-  @ApiParam({
-    name: 'id',
-    description: 'ID de la facultad',
-  })
-  @ApiResponse({
-    status: 200,
-    description: 'Facultad actualizada exitosamente',
-  })
-  @ApiResponse({
-    status: 404,
-    description: 'Facultad no encontrada',
-  })
+  @ApiOperation({ summary: 'Actualizar facultad' })
+  @ApiParam({ name: 'id', description: 'ID de la facultad' })
+  @ApiResponse({ status: 200, description: 'Facultad actualizada' })
+  @ApiResponse({ status: 404, description: 'Facultad no encontrada' })
   update(@Param('id') id: string, @Body() updateFacultadDto: UpdateFacultadDto) {
     return this.facultadesService.update(id, updateFacultadDto);
   }
 
   @Delete(':id')
   @Roles('ADMIN')
-  @HttpCode(HttpStatus.OK)
-  @ApiOperation({ summary: 'Eliminar una facultad' })
-  @ApiParam({
-    name: 'id',
-    description: 'ID de la facultad',
-  })
-  @ApiResponse({
-    status: 200,
-    description: 'Facultad eliminada exitosamente',
-  })
-  @ApiResponse({
-    status: 404,
-    description: 'Facultad no encontrada',
-  })
-  @ApiResponse({
-    status: 409,
-    description: 'No se puede eliminar porque tiene legajos asociados',
-  })
+  @HttpCode(HttpStatus.NO_CONTENT)
+  @ApiOperation({ summary: 'Eliminar facultad' })
+  @ApiParam({ name: 'id', description: 'ID de la facultad' })
+  @ApiResponse({ status: 204, description: 'Facultad eliminada' })
+  @ApiResponse({ status: 404, description: 'Facultad no encontrada' })
   remove(@Param('id') id: string) {
     return this.facultadesService.remove(id);
   }

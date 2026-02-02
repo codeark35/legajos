@@ -1,43 +1,29 @@
-import { ExtractJwt, Strategy } from 'passport-jwt';
+import { Injectable } from '@nestjs/common';
 import { PassportStrategy } from '@nestjs/passport';
-import { Injectable, UnauthorizedException } from '@nestjs/common';
+import { ExtractJwt, Strategy } from 'passport-jwt';
 import { ConfigService } from '@nestjs/config';
-import { PrismaService } from '../../../prisma/prisma.service';
+
+export interface JwtPayload {
+  sub: string;
+  email: string;
+  rol: string;
+}
 
 @Injectable()
 export class JwtStrategy extends PassportStrategy(Strategy) {
-  constructor(
-    private configService: ConfigService,
-    private prisma: PrismaService,
-  ) {
+  constructor(private configService: ConfigService) {
     super({
       jwtFromRequest: ExtractJwt.fromAuthHeaderAsBearerToken(),
       ignoreExpiration: false,
-      secretOrKey: configService.get<string>('JWT_SECRET') || 'secret-key-change-in-production',
+      secretOrKey: configService.get<string>('JWT_SECRET'),
     });
   }
 
-  async validate(payload: any) {
-    const user = await this.prisma.usuario.findUnique({
-      where: { id: payload.sub },
-      select: {
-        id: true,
-        email: true,
-        nombreUsuario: true,
-        rol: true,
-        activo: true,
-      },
-    });
-
-    if (!user || !user.activo) {
-      throw new UnauthorizedException('Usuario no válido o inactivo');
-    }
-
+  async validate(payload: JwtPayload) {
     return {
-      id: user.id,
-      email: user.email,
-      nombreUsuario: user.nombreUsuario,
-      roles: [user.rol],
+      id: payload.sub,
+      email: payload.email,
+      rol: payload.rol,
     };
   }
 }

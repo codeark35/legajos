@@ -2,27 +2,28 @@ import {
   Injectable,
   UnauthorizedException,
   ConflictException,
-  Logger,
+  NotFoundException,
 } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { PrismaService } from '../../prisma/prisma.service';
-import { RolUsuario } from '@prisma/client';
+import { LoginDto } from './dto/login.dto';
+import { RegisterDto } from './dto/register.dto';
 import * as bcrypt from 'bcrypt';
-import { LoginDto, RegisterDto } from './dto/auth.dto';
 
 @Injectable()
 export class AuthService {
-  private readonly logger = new Logger(AuthService.name);
-
   constructor(
-    private prisma: PrismaService,
-    private jwtService: JwtService,
+    private readonly prisma: PrismaService,
+    private readonly jwtService: JwtService,
   ) {}
 
+  /**
+   * Registro de nuevo usuario
+   */
   async register(registerDto: RegisterDto) {
-    const { email, password, nombreUsuario, rol } = registerDto;
+    const { email, nombreUsuario, password, rol } = registerDto;
 
-    // Verificar si el usuario ya existe
+    // Verificar si el email ya existe
     const existingUser = await this.prisma.usuario.findUnique({
       where: { email },
     });
@@ -31,36 +32,40 @@ export class AuthService {
       throw new ConflictException('El email ya está registrado');
     }
 
-    // Hash de la contraseña
-    const hashedPassword = await bcrypt.hash(password, 10);
+    // Hashear contraseña
+    const hashedPassword = await bcrypt.hash(password, 12);
 
     // Crear usuario
     const user = await this.prisma.usuario.create({
       data: {
         email,
-        passwordHash: hashedPassword,
         nombreUsuario,
-        rol: (rol as RolUsuario) || RolUsuario.USUARIO,
+        passwordHash: hashedPassword,
+        rol,
         activo: true,
+      },
+      select: {
+        id: true,
+        email: true,
+        nombreUsuario: true,
+        rol: true,
+        activo: true,
+        createdAt: true,
       },
     });
 
-    this.logger.log(`Usuario registrado: ${email}`);
-
     // Generar token
-    const token = await this.generateToken(user.id, user.email, user.rol);
+    const token = this.generateToken(user.id, user.email, user.rol);
 
     return {
-      user: {
-        id: user.id,
-        email: user.email,
-        nombreUsuario: user.nombreUsuario,
-        rol: user.rol,
-      },
+      user,
       token,
     };
   }
 
+  /**
+   * Login de usuario
+   */
   async login(loginDto: LoginDto) {
     const { email, password } = loginDto;
 
@@ -73,6 +78,7 @@ export class AuthService {
       throw new UnauthorizedException('Credenciales inválidas');
     }
 
+    // Verificar si está activo
     if (!user.activo) {
       throw new UnauthorizedException('Usuario inactivo');
     }
@@ -84,16 +90,8 @@ export class AuthService {
       throw new UnauthorizedException('Credenciales inválidas');
     }
 
-    // Actualizar último login
-    await this.prisma.usuario.update({
-      where: { id: user.id },
-      data: { ultimoAcceso: new Date() },
-    });
-
-    this.logger.log(`Usuario autenticado: ${email}`);
-
     // Generar token
-    const token = await this.generateToken(user.id, user.email, user.rol);
+    const token = this.generateToken(user.id, user.email, user.rol);
 
     return {
       user: {
@@ -101,29 +99,16 @@ export class AuthService {
         email: user.email,
         nombreUsuario: user.nombreUsuario,
         rol: user.rol,
+        activo: user.activo,
       },
       token,
     };
   }
 
-  async validateUser(email: string, password: string): Promise<any> {
-    const user = await this.prisma.usuario.findUnique({
-      where: { email },
-    });
-
-    if (user && (await bcrypt.compare(password, user.passwordHash))) {
-      const { passwordHash, ...result } = user;
-      return result;
-    }
-    return null;
-  }
-
-  async generateToken(userId: string, email: string, rol: string) {
-    const payload = { sub: userId, email, rol };
-    return this.jwtService.sign(payload);
-  }
-
-  async getUserProfile(userId: string) {
+  /**
+   * Obtener perfil del usuario actual
+   */
+  async getProfile(userId: string) {
     const user = await this.prisma.usuario.findUnique({
       where: { id: userId },
       select: {
@@ -132,15 +117,28 @@ export class AuthService {
         nombreUsuario: true,
         rol: true,
         activo: true,
-        ultimoAcceso: true,
         createdAt: true,
+        updatedAt: true,
       },
     });
 
     if (!user) {
-      throw new UnauthorizedException('Usuario no encontrado');
+      throw new NotFoundException('Usuario no encontrado');
     }
 
     return user;
+  }
+
+  /**
+   * Generar JWT token
+   */
+  private generateToken(userId: string, email: string, rol: string): string {
+    const payload = {
+      sub: userId,
+      email,
+      rol,
+    };
+
+    return this.jwtService.sign(payload);
   }
 }

@@ -1,114 +1,115 @@
-import { Injectable, NotFoundException, ConflictException, Logger, BadRequestException } from '@nestjs/common';
+import {
+  Injectable,
+  NotFoundException,
+  ConflictException,
+  BadRequestException,
+} from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import { CreateLegajoDto } from './dto/create-legajo.dto';
 import { UpdateLegajoDto } from './dto/update-legajo.dto';
-import { QueryLegajoDto } from './dto/query-legajo.dto';
-import { Prisma } from '@prisma/client';
-import { createPaginatedResponse, calculateSkip } from '../../common/utils/pagination.util';
+import { QueryLegajosDto } from './dto/query-legajos.dto';
 
 @Injectable()
 export class LegajosService {
-  private readonly logger = new Logger(LegajosService.name);
-
   constructor(private prisma: PrismaService) {}
 
   async create(createLegajoDto: CreateLegajoDto) {
-    this.logger.log(`Creando legajo para persona: ${createLegajoDto.personaId}`);
-
     // Verificar que la persona existe
     const persona = await this.prisma.persona.findUnique({
       where: { id: createLegajoDto.personaId },
     });
-
     if (!persona) {
-      throw new NotFoundException('Persona no encontrada');
+      throw new BadRequestException('La persona especificada no existe');
     }
 
-    // Verificar si la facultad existe (si se proporciona)
-    if (createLegajoDto.facultadId) {
-      const facultad = await this.prisma.facultad.findUnique({
-        where: { id: createLegajoDto.facultadId },
-      });
-
-      if (!facultad) {
-        throw new NotFoundException('Facultad no encontrada');
-      }
+    // Verificar que la facultad existe
+    const facultad = await this.prisma.facultad.findUnique({
+      where: { id: createLegajoDto.facultadId },
+    });
+    if (!facultad) {
+      throw new BadRequestException('La facultad especificada no existe');
     }
 
-    // Verificar si ya existe un legajo activo del mismo tipo para esta persona
+    // Verificar que el número de legajo sea único
     const existingLegajo = await this.prisma.legajo.findFirst({
+      where: { numeroLegajo: createLegajoDto.numeroLegajo },
+    });
+    if (existingLegajo) {
+      throw new ConflictException('El número de legajo ya está en uso');
+    }
+
+    // Verificar que la persona no tenga ya un legajo en esa facultad
+    const existingLegajoPersona = await this.prisma.legajo.findFirst({
       where: {
         personaId: createLegajoDto.personaId,
-        tipoLegajo: createLegajoDto.tipoLegajo,
-        estadoLegajo: 'ACTIVO',
+        facultadId: createLegajoDto.facultadId,
       },
     });
-
-    if (existingLegajo) {
+    if (existingLegajoPersona) {
       throw new ConflictException(
-        `La persona ya tiene un legajo activo de tipo ${createLegajoDto.tipoLegajo}`,
+        'La persona ya tiene un legajo en esta facultad',
       );
     }
 
-    // Generar número de legajo automático
-    const numeroLegajo = await this.generateNumeroLegajo();
+    const data: any = {
+      numeroLegajo: createLegajoDto.numeroLegajo,
+      persona: { connect: { id: createLegajoDto.personaId } },
+      facultad: { connect: { id: createLegajoDto.facultadId } },
+    };
 
-    const legajo = await this.prisma.legajo.create({
-      data: {
-        numeroLegajo,
-        personaId: createLegajoDto.personaId,
-        tipoLegajo: createLegajoDto.tipoLegajo,
-        facultadId: createLegajoDto.facultadId,
-        fechaApertura: createLegajoDto.fechaApertura
-          ? new Date(createLegajoDto.fechaApertura)
-          : new Date(),
-        estadoLegajo: createLegajoDto.estadoLegajo,
-        observaciones: createLegajoDto.observaciones,
-      },
+    if (createLegajoDto.fechaApertura) {
+      data.fechaApertura = new Date(createLegajoDto.fechaApertura);
+    }
+
+    return this.prisma.legajo.create({
+      data,
       include: {
-        persona: true,
-        facultad: true,
+        persona: {
+          select: {
+            id: true,
+            nombres: true,
+            apellidos: true,
+            numeroCedula: true,
+          },
+        },
+        facultad: {
+          select: {
+            id: true,
+            nombreFacultad: true,
+          },
+        },
       },
     });
-
-    this.logger.log(`Legajo creado: ${numeroLegajo}`);
-    return legajo;
   }
 
-  async findAll(query: QueryLegajoDto) {
-    const {
-      page = 1,
-      limit = 10,
-      sortBy = 'createdAt',
-      sortOrder = 'desc',
-      numeroLegajo,
-      personaId,
-      tipoLegajo,
-      estadoLegajo,
-      facultadId,
-    } = query;
+  async findAll(query: QueryLegajosDto) {
+    const { page = 1, limit = 10, search, facultadId, personaId } = query;
+    const skip = (page - 1) * limit;
 
-    const skip = calculateSkip(page, limit);
-    const where: Prisma.LegajoWhereInput = {};
+    const where: any = {};
 
-    if (numeroLegajo) {
-      where.numeroLegajo = { contains: numeroLegajo, mode: 'insensitive' };
-    }
-
-    if (personaId) {
-      where.personaId = personaId;
-    }
-
-    if (tipoLegajo) {
-      where.tipoLegajo = tipoLegajo;
-    }
-
-    if (estadoLegajo) {
-      where.estadoLegajo = estadoLegajo;
+    if (search) {
+      where.OR = [
+        { numeroLegajo: { contains: search, mode: 'insensitive' } },
+        {
+          persona: {
+            nombres: { contains: search, mode: 'insensitive' },
+          },
+        },
+        {
+          persona: {
+            apellidos: { contains: search, mode: 'insensitive' },
+          },
+        },
+      ];
     }
 
     if (facultadId) {
       where.facultadId = facultadId;
+    }
+
+    if (personaId) {
+      where.personaId = personaId;
     }
 
     const [data, total] = await Promise.all([
@@ -116,22 +117,39 @@ export class LegajosService {
         where,
         skip,
         take: limit,
-        orderBy: { [sortBy]: sortOrder },
+        orderBy: { fechaApertura: 'desc' },
         include: {
-          persona: true,
-          facultad: true,
-          _count: {
+          persona: {
             select: {
-              nombramientos: true,
-              documentos: true,
+              id: true,
+              nombres: true,
+              apellidos: true,
+              numeroCedula: true,
             },
+          },
+          facultad: {
+            select: {
+              id: true,
+              nombreFacultad: true,
+            },
+          },
+          _count: {
+            select: { nombramientos: true },
           },
         },
       }),
       this.prisma.legajo.count({ where }),
     ]);
 
-    return createPaginatedResponse(data, total, page, limit);
+    return {
+      data,
+      pagination: {
+        total,
+        page,
+        limit,
+        totalPages: Math.ceil(total / limit),
+      },
+    };
   }
 
   async findOne(id: string) {
@@ -143,12 +161,14 @@ export class LegajosService {
         nombramientos: {
           include: {
             cargo: true,
-            asignacionesSalariales: true,
+            asignacionPresupuestaria: {
+              include: {
+                categoriaPresupuestaria: true,
+                lineaPresupuestaria: true,
+              },
+            },
           },
           orderBy: { fechaInicio: 'desc' },
-        },
-        documentos: {
-          orderBy: { fechaCarga: 'desc' },
         },
       },
     });
@@ -160,182 +180,81 @@ export class LegajosService {
     return legajo;
   }
 
-  async findByNumero(numeroLegajo: string) {
-    const legajo = await this.prisma.legajo.findUnique({
-      where: { numeroLegajo },
-      include: {
-        persona: true,
-        facultad: true,
-        nombramientos: {
-          include: {
-            cargo: true,
-          },
-        },
-      },
-    });
-
-    if (!legajo) {
-      throw new NotFoundException(`Legajo ${numeroLegajo} no encontrado`);
-    }
-
-    return legajo;
-  }
-
-  async findByPersona(personaId: string) {
-    const persona = await this.prisma.persona.findUnique({
-      where: { id: personaId },
-    });
-
-    if (!persona) {
-      throw new NotFoundException('Persona no encontrada');
-    }
-
-    const legajos = await this.prisma.legajo.findMany({
-      where: { personaId },
-      include: {
-        facultad: true,
-        _count: {
-          select: {
-            nombramientos: true,
-            documentos: true,
-          },
-        },
-      },
-      orderBy: { createdAt: 'desc' },
-    });
-
-    return legajos;
-  }
-
   async update(id: string, updateLegajoDto: UpdateLegajoDto) {
-    this.logger.log(`Actualizando legajo: ${id}`);
-
-    // Verificar que el legajo existe
+    // Verificar que existe
     await this.findOne(id);
 
-    // Verificar facultad si se actualiza
+    // Si se está actualizando el número de legajo, verificar que sea único
+    if (updateLegajoDto.numeroLegajo) {
+      const existingLegajo = await this.prisma.legajo.findFirst({
+        where: {
+          numeroLegajo: updateLegajoDto.numeroLegajo,
+          NOT: { id },
+        },
+      });
+      if (existingLegajo) {
+        throw new ConflictException('El número de legajo ya está en uso');
+      }
+    }
+
+    const data: any = {};
+
+    if (updateLegajoDto.numeroLegajo) {
+      data.numeroLegajo = updateLegajoDto.numeroLegajo;
+    }
+
+    if (updateLegajoDto.personaId) {
+      const persona = await this.prisma.persona.findUnique({
+        where: { id: updateLegajoDto.personaId },
+      });
+      if (!persona) {
+        throw new BadRequestException('La persona especificada no existe');
+      }
+      data.persona = { connect: { id: updateLegajoDto.personaId } };
+    }
+
     if (updateLegajoDto.facultadId) {
       const facultad = await this.prisma.facultad.findUnique({
         where: { id: updateLegajoDto.facultadId },
       });
-
       if (!facultad) {
-        throw new NotFoundException('Facultad no encontrada');
+        throw new BadRequestException('La facultad especificada no existe');
       }
+      data.facultad = { connect: { id: updateLegajoDto.facultadId } };
     }
 
-    const legajo = await this.prisma.legajo.update({
-      where: { id },
-      data: {
-        ...updateLegajoDto,
-        fechaApertura: updateLegajoDto.fechaApertura
-          ? new Date(updateLegajoDto.fechaApertura)
-          : undefined,
-      },
-      include: {
-        persona: true,
-        facultad: true,
-      },
-    });
-
-    this.logger.log(`Legajo actualizado: ${id}`);
-    return legajo;
-  }
-
-  async changeEstado(id: string, nuevoEstado: string) {
-    this.logger.log(`Cambiando estado de legajo ${id} a ${nuevoEstado}`);
-
-    const validEstados = ['ACTIVO', 'CERRADO', 'SUSPENDIDO', 'ARCHIVADO'];
-
-    if (!validEstados.includes(nuevoEstado)) {
-      throw new BadRequestException(`Estado inválido. Debe ser uno de: ${validEstados.join(', ')}`);
+    if (updateLegajoDto.fechaApertura) {
+      data.fechaApertura = new Date(updateLegajoDto.fechaApertura);
     }
 
-    await this.findOne(id);
-
-    const legajo = await this.prisma.legajo.update({
+    return this.prisma.legajo.update({
       where: { id },
-      data: { estadoLegajo: nuevoEstado as any },
+      data,
       include: {
-        persona: true,
-        facultad: true,
+        persona: {
+          select: {
+            id: true,
+            nombres: true,
+            apellidos: true,
+            numeroCedula: true,
+          },
+        },
+        facultad: {
+          select: {
+            id: true,
+            nombreFacultad: true,
+          },
+        },
       },
     });
-
-    this.logger.log(`Estado del legajo ${id} cambiado a ${nuevoEstado}`);
-    return legajo;
   }
 
   async remove(id: string) {
-    this.logger.log(`Archivando legajo: ${id}`);
-
+    // Verificar que existe
     await this.findOne(id);
 
-    const legajo = await this.prisma.legajo.update({
+    return this.prisma.legajo.delete({
       where: { id },
-      data: { estadoLegajo: 'ARCHIVADO' },
     });
-
-    this.logger.log(`Legajo archivado: ${id}`);
-    return legajo;
-  }
-
-  async getStats() {
-    const [total, activos, cerrados, suspendidos, archivados, porTipo] = await Promise.all([
-      this.prisma.legajo.count(),
-      this.prisma.legajo.count({ where: { estadoLegajo: 'ACTIVO' } }),
-      this.prisma.legajo.count({ where: { estadoLegajo: 'CERRADO' } }),
-      this.prisma.legajo.count({ where: { estadoLegajo: 'SUSPENDIDO' } }),
-      this.prisma.legajo.count({ where: { estadoLegajo: 'ARCHIVADO' } }),
-      this.prisma.legajo.groupBy({
-        by: ['tipoLegajo'],
-        _count: { _all: true },
-      }),
-    ]);
-
-    return {
-      total,
-      porEstado: {
-        activos,
-        cerrados,
-        suspendidos,
-        archivados,
-      },
-      porTipo: porTipo.map((item) => ({
-        tipo: item.tipoLegajo,
-        cantidad: item._count._all,
-      })),
-    };
-  }
-
-  /**
-   * Generar número de legajo automático: LEG-YYYY-####
-   */
-  private async generateNumeroLegajo(): Promise<string> {
-    const year = new Date().getFullYear();
-    const prefix = `LEG-${year}`;
-
-    const lastLegajo = await this.prisma.legajo.findFirst({
-      where: {
-        numeroLegajo: {
-          startsWith: prefix,
-        },
-      },
-      orderBy: {
-        numeroLegajo: 'desc',
-      },
-      select: {
-        numeroLegajo: true,
-      },
-    });
-
-    let nextNumber = 1;
-
-    if (lastLegajo) {
-      const lastNumber = parseInt(lastLegajo.numeroLegajo.split('-')[2]);
-      nextNumber = lastNumber + 1;
-    }
-
-    return `${prefix}-${nextNumber.toString().padStart(4, '0')}`;
   }
 }

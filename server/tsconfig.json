@@ -1,11 +1,11 @@
 {
   "compilerOptions": {
-    "target": "ES2021",
+    "target": "ES2022",
     "module": "commonjs",
-    "lib": ["ES2021"],
+    "lib": ["ES2022"],
     "outDir": "./dist",
     "rootDir": "./src",
-    "strict": false,
+    "strict": true,
     "strictPropertyInitialization": false,
     "esModuleInterop": true,
     "skipLibCheck": true,
@@ -21,7 +21,8 @@
     "baseUrl": "./",
     "paths": {
       "@/*": ["src/*"]
-    }
+    },
+    "types": ["node", "jest"]
   },
   "include": [
     "src/**/*"
@@ -29,6 +30,7 @@
   "exclude": [
     "node_modules",
     "dist",
-    "**/*.spec.ts"
+    "**/*.spec.ts",
+    "**/*.test.ts"
   ]
 }

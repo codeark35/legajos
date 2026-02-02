@@ -1,14 +1,15 @@
-import { Controller, Post, Body, Get, UseGuards, HttpCode, HttpStatus } from '@nestjs/common';
+import { Controller, Post, Get, Body, UseGuards, HttpCode, HttpStatus } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth } from '@nestjs/swagger';
 import { AuthService } from './auth.service';
-import { LoginDto, RegisterDto } from './dto/auth.dto';
-import { JwtAuthGuard } from './guards/jwt-auth.guard';
+import { LoginDto } from './dto/login.dto';
+import { RegisterDto } from './dto/register.dto';
+import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 
-@ApiTags('Auth')
 @Controller('auth')
+@ApiTags('Auth')
 export class AuthController {
-  constructor(private authService: AuthService) {}
+  constructor(private readonly authService: AuthService) {}
 
   @Post('register')
   @ApiOperation({ summary: 'Registrar nuevo usuario' })
@@ -29,11 +30,11 @@ export class AuthController {
 
   @Get('profile')
   @UseGuards(JwtAuthGuard)
-  @ApiBearerAuth()
-  @ApiOperation({ summary: 'Obtener perfil del usuario autenticado' })
+  @ApiBearerAuth('JWT-auth')
+  @ApiOperation({ summary: 'Obtener perfil del usuario actual' })
   @ApiResponse({ status: 200, description: 'Perfil obtenido exitosamente' })
-  @ApiResponse({ status: 401, description: 'No autorizado' })
+  @ApiResponse({ status: 401, description: 'No autenticado' })
   async getProfile(@CurrentUser('id') userId: string) {
-    return this.authService.getUserProfile(userId);
+    return this.authService.getProfile(userId);
   }
 }

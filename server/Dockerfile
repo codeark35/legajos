@@ -1,8 +1,8 @@
 # Dockerfile para el sistema de salón de belleza
-FROM node:18-alpine
+FROM node:20-alpine AS base
 
 # Instalar dependencias del sistema necesarias
-RUN apk add --no-cache openssl netcat-openbsd
+RUN apk add --no-cache openssl netcat-openbsd libc6-compat
 
 # Crear directorio de trabajo
 WORKDIR /app/legajos

@@ -30,7 +30,8 @@ export default function LoginPage() {
       <div className="row h-100">
         <div className="col-md-6 d-none d-md-flex align-items-center justify-content-center bg-primary text-white">
           <div className="text-center">
-            <h1 className="display-4 mb-4">Sistema de Legajos</h1>
+            <img src="" alt="" />
+            <h1 className="display-6 mb-4">Sistema de Legajos</h1>
             <p className="lead">Universidad Nacional de Itapúa</p>
             <p>Gestión integral de expedientes de personal</p>
           </div>

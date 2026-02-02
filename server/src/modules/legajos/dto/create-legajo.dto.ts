@@ -1,64 +1,49 @@
 import {
   IsString,
   IsNotEmpty,
-  IsOptional,
-  IsEnum,
-  IsDateString,
   IsUUID,
+  IsDateString,
+  IsOptional,
+  MinLength,
   MaxLength,
 } from 'class-validator';
-import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { TipoLegajo, EstadoLegajo } from '@prisma/client';
+import { ApiProperty } from '@nestjs/swagger';
 
 export class CreateLegajoDto {
   @ApiProperty({
-    description: 'ID de la persona asociada al legajo',
-    example: '123e4567-e89b-12d3-a456-426614174000',
+    description: 'ID de la persona',
+    example: '550e8400-e29b-41d4-a716-446655440000',
   })
   @IsUUID()
-  @IsNotEmpty({ message: 'El ID de la persona es requerido' })
+  @IsNotEmpty()
   personaId: string;
 
   @ApiProperty({
-    description: 'Tipo de legajo',
-    enum: TipoLegajo,
-    example: TipoLegajo.DOCENTE,
+    description: 'ID de la facultad',
+    example: '550e8400-e29b-41d4-a716-446655440001',
   })
-  @IsEnum(TipoLegajo)
-  @IsNotEmpty({ message: 'El tipo de legajo es requerido' })
-  tipoLegajo: TipoLegajo;
-
-  @ApiPropertyOptional({
-    description: 'ID de la facultad o dependencia',
-    example: '123e4567-e89b-12d3-a456-426614174001',
-  })
-  @IsOptional()
   @IsUUID()
-  facultadId?: string;
+  @IsNotEmpty()
+  facultadId: string;
 
-  @ApiPropertyOptional({
-    description: 'Fecha de apertura del legajo',
-    example: '2024-01-15',
+  @ApiProperty({
+    description: 'Número de legajo',
+    example: 'LEG-2024-001',
+    minLength: 5,
+    maxLength: 50,
   })
-  @IsOptional()
-  @IsDateString()
-  fechaApertura?: string;
-
-  @ApiPropertyOptional({
-    description: 'Observaciones adicionales',
-    example: 'Legajo creado para nuevo docente',
-  })
-  @IsOptional()
   @IsString()
-  @MaxLength(1000)
-  observaciones?: string;
+  @IsNotEmpty()
+  @MinLength(5)
+  @MaxLength(50)
+  numeroLegajo: string;
 
-  @ApiPropertyOptional({
-    description: 'Estado del legajo',
-    enum: EstadoLegajo,
-    example: EstadoLegajo.ACTIVO,
+  @ApiProperty({
+    description: 'Fecha de apertura en formato ISO 8601',
+    example: '2024-01-15',
+    required: false,
   })
+  @IsDateString()
   @IsOptional()
-  @IsEnum(EstadoLegajo)
-  estadoLegajo?: EstadoLegajo;
+  fechaApertura?: string;
 }

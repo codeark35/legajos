@@ -7,47 +7,30 @@ import {
 } from '@nestjs/common';
 import { Observable } from 'rxjs';
 import { tap } from 'rxjs/operators';
+import { FastifyRequest } from 'fastify';
 
 @Injectable()
 export class LoggingInterceptor implements NestInterceptor {
-  private readonly logger = new Logger(LoggingInterceptor.name);
+  private readonly logger = new Logger('HTTP');
 
   intercept(context: ExecutionContext, next: CallHandler): Observable<any> {
-    const request = context.switchToHttp().getRequest();
-    const { method, url, body, query, params } = request;
-    const userAgent = request.get('user-agent') || '';
-    const ip = request.ip;
-
+    const ctx = context.switchToHttp();
+    const request = ctx.getRequest<FastifyRequest>();
+    const { method, url } = request;
     const now = Date.now();
-
-    this.logger.log(
-      `Incoming Request: ${method} ${url} - IP: ${ip} - User-Agent: ${userAgent}`,
-    );
-
-    if (Object.keys(body).length > 0) {
-      this.logger.debug(`Body: ${JSON.stringify(body)}`);
-    }
-
-    if (Object.keys(query).length > 0) {
-      this.logger.debug(`Query: ${JSON.stringify(query)}`);
-    }
-
-    if (Object.keys(params).length > 0) {
-      this.logger.debug(`Params: ${JSON.stringify(params)}`);
-    }
 
     return next.handle().pipe(
       tap({
         next: () => {
           const responseTime = Date.now() - now;
           this.logger.log(
-            `Outgoing Response: ${method} ${url} - ${responseTime}ms`,
+            `${method} ${url} - ${responseTime}ms`,
           );
         },
         error: (error) => {
           const responseTime = Date.now() - now;
           this.logger.error(
-            `Error Response: ${method} ${url} - ${responseTime}ms - Error: ${error.message}`,
+            `${method} ${url} - ${responseTime}ms - ${error.message}`,
           );
         },
       }),

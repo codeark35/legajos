@@ -6,8 +6,7 @@ import {
   HttpStatus,
   Logger,
 } from '@nestjs/common';
-import { Request, Response } from 'express';
-import { ErrorResponseDto } from '../dto/response.dto';
+import { FastifyReply } from 'fastify';
 
 @Catch()
 export class AllExceptionsFilter implements ExceptionFilter {
@@ -15,49 +14,43 @@ export class AllExceptionsFilter implements ExceptionFilter {
 
   catch(exception: unknown, host: ArgumentsHost) {
     const ctx = host.switchToHttp();
-    const response = ctx.getResponse<Response>();
-    const request = ctx.getRequest<Request>();
+    const response = ctx.getResponse<FastifyReply>();
+    const request = ctx.getRequest();
 
-    let status = HttpStatus.INTERNAL_SERVER_ERROR;
-    let message = 'Error interno del servidor';
-    let errors: any = null;
+    const status =
+      exception instanceof HttpException
+        ? exception.getStatus()
+        : HttpStatus.INTERNAL_SERVER_ERROR;
 
-    if (exception instanceof HttpException) {
-      status = exception.getStatus();
-      const exceptionResponse = exception.getResponse();
+    const message =
+      exception instanceof HttpException
+        ? exception.getResponse()
+        : 'Internal server error';
 
-      if (typeof exceptionResponse === 'object') {
-        message =
-          (exceptionResponse as any).message || exception.message;
-        errors = (exceptionResponse as any).errors || null;
-      } else {
-        message = exceptionResponse as string;
-      }
-    } else if (exception instanceof Error) {
-      message = exception.message;
+    const errorResponse = {
+      success: false,
+      statusCode: status,
+      timestamp: new Date().toISOString(),
+      path: request.url,
+      method: request.method,
+      message: typeof message === 'string' ? message : (message as any).message,
+      ...(typeof message === 'object' && message !== null && 'error' in message
+        ? { error: (message as any).error }
+        : {}),
+    };
+
+    // Log error details
+    if (status >= 500) {
       this.logger.error(
-        `Unhandled Exception: ${exception.message}`,
-        exception.stack,
+        `${request.method} ${request.url} - ${status}`,
+        exception instanceof Error ? exception.stack : String(exception),
+      );
+    } else if (status >= 400) {
+      this.logger.warn(
+        `${request.method} ${request.url} - ${status} - ${JSON.stringify(errorResponse.message)}`,
       );
     }
 
-    const errorResponse = new ErrorResponseDto(
-      message,
-      request.url,
-      errors,
-    );
-
-    // Log del error
-    this.logger.error(
-      `Status: ${status} - Method: ${request.method} - URL: ${request.url}`,
-      JSON.stringify({
-        body: request.body,
-        query: request.query,
-        params: request.params,
-        error: message,
-      }),
-    );
-
-    response.status(status).json(errorResponse);
+    response.status(status).send(errorResponse);
   }
 }

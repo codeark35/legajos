@@ -1,112 +1,104 @@
-import { Injectable, NotFoundException, BadRequestException, Logger } from '@nestjs/common';
+import {
+  Injectable,
+  NotFoundException,
+  BadRequestException,
+} from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
-import { CreateNombramientoDto, CreateAsignacionSalarialDto } from './dto/create-nombramiento.dto';
+import { CreateNombramientoDto } from './dto/create-nombramiento.dto';
 import { UpdateNombramientoDto } from './dto/update-nombramiento.dto';
-import { QueryNombramientoDto } from './dto/query-nombramiento.dto';
-import { Prisma } from '@prisma/client';
-import { createPaginatedResponse, calculateSkip } from '../../common/utils/pagination.util';
+import { QueryNombramientosDto } from './dto/query-nombramientos.dto';
 
 @Injectable()
 export class NombramientosService {
-  private readonly logger = new Logger(NombramientosService.name);
-
   constructor(private prisma: PrismaService) {}
 
   async create(createNombramientoDto: CreateNombramientoDto) {
-    this.logger.log(`Creando nombramiento para legajo: ${createNombramientoDto.legajoId}`);
-
     // Verificar que el legajo existe
     const legajo = await this.prisma.legajo.findUnique({
       where: { id: createNombramientoDto.legajoId },
     });
-
     if (!legajo) {
-      throw new NotFoundException('Legajo no encontrado');
+      throw new BadRequestException('El legajo especificado no existe');
+    }
+
+    // Verificar que el cargo existe
+    const cargo = await this.prisma.cargo.findUnique({
+      where: { id: createNombramientoDto.cargoId },
+    });
+    if (!cargo) {
+      throw new BadRequestException('El cargo especificado no existe');
     }
 
     // Validar fechas
+    const fechaInicio = new Date(createNombramientoDto.fechaInicio);
     if (createNombramientoDto.fechaFin) {
-      const fechaInicio = new Date(createNombramientoDto.fechaInicio);
       const fechaFin = new Date(createNombramientoDto.fechaFin);
-
-      if (fechaFin <= fechaInicio) {
-        throw new BadRequestException('La fecha de fin debe ser posterior a la fecha de inicio');
+      if (fechaFin < fechaInicio) {
+        throw new BadRequestException(
+          'La fecha de fin no puede ser anterior a la fecha de inicio',
+        );
       }
     }
 
-    const nombramiento = await this.prisma.nombramiento.create({
-      data: {
-        legajoId: createNombramientoDto.legajoId,
-        cargoId: createNombramientoDto.cargoId,
-        tipoNombramiento: createNombramientoDto.tipoNombramiento,
-        categoria: createNombramientoDto.categoria,
-        fechaInicio: new Date(createNombramientoDto.fechaInicio),
-        fechaFin: createNombramientoDto.fechaFin ? new Date(createNombramientoDto.fechaFin) : null,
-        resolucionNumero: createNombramientoDto.resolucionNumero,
-        resolucionFecha: createNombramientoDto.resolucionFecha
-          ? new Date(createNombramientoDto.resolucionFecha)
-          : null,
-        resolucionId: createNombramientoDto.resolucionId,
-        salarioMensual: createNombramientoDto.salarioMensual,
-        moneda: createNombramientoDto.moneda || 'PYG',
-        estadoNombramiento: createNombramientoDto.estadoNombramiento,
-        observaciones: createNombramientoDto.observaciones,
-      },
+    const data: any = {
+      legajo: { connect: { id: createNombramientoDto.legajoId } },
+      cargo: { connect: { id: createNombramientoDto.cargoId } },
+      fechaInicio: new Date(createNombramientoDto.fechaInicio),
+      vigente: createNombramientoDto.vigente ?? true,
+    };
+
+    if (createNombramientoDto.fechaFin) {
+      data.fechaFin = new Date(createNombramientoDto.fechaFin);
+    }
+
+    if (createNombramientoDto.observaciones) {
+      data.observaciones = createNombramientoDto.observaciones;
+    }
+
+    return this.prisma.nombramiento.create({
+      data,
       include: {
         legajo: {
           include: {
-            persona: true,
+            persona: {
+              select: {
+                nombres: true,
+                apellidos: true,
+                numeroCedula: true,
+              },
+            },
+            facultad: {
+              select: {
+                nombreFacultad: true,
+              },
+            },
           },
         },
         cargo: true,
       },
     });
-
-    this.logger.log(`Nombramiento creado con ID: ${nombramiento.id}`);
-    return nombramiento;
   }
 
-  async findAll(query: QueryNombramientoDto) {
-    const {
-      page = 1,
-      limit = 10,
-      sortBy = 'fechaInicio',
-      sortOrder = 'desc',
-      legajoId,
-      estadoNombramiento,
-      resolucionNumero,
-      fechaDesde,
-      fechaHasta,
-      soloVigentes,
-    } = query;
+  async findAll(query: QueryNombramientosDto) {
+    const { page = 1, limit = 10, search, legajoId, cargoId, vigente } = query;
+    const skip = (page - 1) * limit;
 
-    const skip = calculateSkip(page, limit);
-    const where: Prisma.NombramientoWhereInput = {};
+    const where: any = {};
 
     if (legajoId) {
       where.legajoId = legajoId;
     }
 
-    if (estadoNombramiento) {
-      where.estadoNombramiento = estadoNombramiento;
+    if (cargoId) {
+      where.cargoId = cargoId;
     }
 
-    if (soloVigentes) {
-      where.estadoNombramiento = 'VIGENTE';
+    if (vigente !== undefined) {
+      where.vigente = vigente;
     }
 
-    if (resolucionNumero) {
-      where.resolucionNumero = { contains: resolucionNumero, mode: 'insensitive' };
-    }
-
-    if (fechaDesde || fechaHasta) {
-      where.fechaInicio = {};
-      if (fechaDesde) {
-        where.fechaInicio.gte = new Date(fechaDesde);
-      }
-      if (fechaHasta) {
-        where.fechaInicio.lte = new Date(fechaHasta);
-      }
+    if (search) {
+      where.observaciones = { contains: search, mode: 'insensitive' };
     }
 
     const [data, total] = await Promise.all([
@@ -114,26 +106,41 @@ export class NombramientosService {
         where,
         skip,
         take: limit,
-        orderBy: { [sortBy]: sortOrder },
+        orderBy: { fechaInicio: 'desc' },
         include: {
           legajo: {
             include: {
-              persona: true,
-              facultad: true,
+              persona: {
+                select: {
+                  id: true,
+                  nombres: true,
+                  apellidos: true,
+                  numeroCedula: true,
+                },
+              },
+              facultad: {
+                select: {
+                  id: true,
+                  nombreFacultad: true,
+                },
+              },
             },
           },
           cargo: true,
-          _count: {
-            select: {
-              asignacionesSalariales: true,
-            },
-          },
         },
       }),
       this.prisma.nombramiento.count({ where }),
     ]);
 
-    return createPaginatedResponse(data, total, page, limit);
+    return {
+      data,
+      pagination: {
+        total,
+        page,
+        limit,
+        totalPages: Math.ceil(total / limit),
+      },
+    };
   }
 
   async findOne(id: string) {
@@ -147,176 +154,108 @@ export class NombramientosService {
           },
         },
         cargo: true,
-        resolucion: true,
-        asignacionesSalariales: {
-          orderBy: { fechaDesde: 'desc' },
+        asignacionPresupuestaria: {
+          include: {
+            categoriaPresupuestaria: true,
+            lineaPresupuestaria: true,
+          },
         },
       },
     });
 
     if (!nombramiento) {
-      throw new NotFoundException(`Nombramiento con ID ${id} no encontrado`);
+      throw new NotFoundException(
+        `Nombramiento con ID ${id} no encontrado`,
+      );
     }
 
     return nombramiento;
-  }
-
-  async findByLegajo(legajoId: string) {
-    const legajo = await this.prisma.legajo.findUnique({
-      where: { id: legajoId },
-    });
-
-    if (!legajo) {
-      throw new NotFoundException('Legajo no encontrado');
-    }
-
-    const nombramientos = await this.prisma.nombramiento.findMany({
-      where: { legajoId },
-      include: {
-        cargo: true,
-        asignacionesSalariales: true,
-      },
-      orderBy: { fechaInicio: 'desc' },
-    });
-
-    return nombramientos;
-  }
-
-  async findVigentes() {
-    const nombramientos = await this.prisma.nombramiento.findMany({
-      where: {
-        estadoNombramiento: 'VIGENTE',
-      },
-      include: {
-        legajo: {
-          include: {
-            persona: true,
-          },
-        },
-        cargo: true,
-      },
-      orderBy: { fechaInicio: 'desc' },
-    });
-
-    return nombramientos;
   }
 
   async update(id: string, updateNombramientoDto: UpdateNombramientoDto) {
-    this.logger.log(`Actualizando nombramiento: ${id}`);
-
+    // Verificar que existe
     await this.findOne(id);
 
-    // Validar fechas si se actualizan
-    if (updateNombramientoDto.fechaInicio || updateNombramientoDto.fechaFin) {
-      const current = await this.prisma.nombramiento.findUnique({ where: { id } });
-      const fechaInicio = updateNombramientoDto.fechaInicio
-        ? new Date(updateNombramientoDto.fechaInicio)
-        : current.fechaInicio;
-      const fechaFin = updateNombramientoDto.fechaFin
-        ? new Date(updateNombramientoDto.fechaFin)
-        : current.fechaFin;
-
-      if (fechaFin && fechaFin <= fechaInicio) {
-        throw new BadRequestException('La fecha de fin debe ser posterior a la fecha de inicio');
+    // Validar fechas si se proporcionan ambas
+    if (updateNombramientoDto.fechaInicio && updateNombramientoDto.fechaFin) {
+      const fechaInicio = new Date(updateNombramientoDto.fechaInicio);
+      const fechaFin = new Date(updateNombramientoDto.fechaFin);
+      if (fechaFin < fechaInicio) {
+        throw new BadRequestException(
+          'La fecha de fin no puede ser anterior a la fecha de inicio',
+        );
       }
     }
 
-    const nombramiento = await this.prisma.nombramiento.update({
+    const data: any = {};
+
+    if (updateNombramientoDto.legajoId) {
+      const legajo = await this.prisma.legajo.findUnique({
+        where: { id: updateNombramientoDto.legajoId },
+      });
+      if (!legajo) {
+        throw new BadRequestException('El legajo especificado no existe');
+      }
+      data.legajo = { connect: { id: updateNombramientoDto.legajoId } };
+    }
+
+    if (updateNombramientoDto.cargoId) {
+      const cargo = await this.prisma.cargo.findUnique({
+        where: { id: updateNombramientoDto.cargoId },
+      });
+      if (!cargo) {
+        throw new BadRequestException('El cargo especificado no existe');
+      }
+      data.cargo = { connect: { id: updateNombramientoDto.cargoId } };
+    }
+
+    if (updateNombramientoDto.fechaInicio) {
+      data.fechaInicio = new Date(updateNombramientoDto.fechaInicio);
+    }
+
+    if (updateNombramientoDto.fechaFin) {
+      data.fechaFin = new Date(updateNombramientoDto.fechaFin);
+    }
+
+    if (updateNombramientoDto.vigente !== undefined) {
+      data.vigente = updateNombramientoDto.vigente;
+    }
+
+    if (updateNombramientoDto.observaciones !== undefined) {
+      data.observaciones = updateNombramientoDto.observaciones;
+    }
+
+    return this.prisma.nombramiento.update({
       where: { id },
-      data: {
-        ...updateNombramientoDto,
-        fechaInicio: updateNombramientoDto.fechaInicio
-          ? new Date(updateNombramientoDto.fechaInicio)
-          : undefined,
-        fechaFin: updateNombramientoDto.fechaFin
-          ? new Date(updateNombramientoDto.fechaFin)
-          : undefined,
-        resolucionFecha: updateNombramientoDto.resolucionFecha
-          ? new Date(updateNombramientoDto.resolucionFecha)
-          : undefined,
-      },
+      data,
       include: {
         legajo: {
           include: {
-            persona: true,
+            persona: {
+              select: {
+                nombres: true,
+                apellidos: true,
+                numeroCedula: true,
+              },
+            },
+            facultad: {
+              select: {
+                nombreFacultad: true,
+              },
+            },
           },
         },
         cargo: true,
       },
     });
-
-    this.logger.log(`Nombramiento actualizado: ${id}`);
-    return nombramiento;
   }
 
-  async finalizarNombramiento(id: string, fechaFin?: string) {
-    this.logger.log(`Finalizando nombramiento: ${id}`);
-
+  async remove(id: string) {
+    // Verificar que existe
     await this.findOne(id);
 
-    const nombramiento = await this.prisma.nombramiento.update({
+    return this.prisma.nombramiento.delete({
       where: { id },
-      data: {
-        estadoNombramiento: 'FINALIZADO',
-        fechaFin: fechaFin ? new Date(fechaFin) : new Date(),
-      },
     });
-
-    this.logger.log(`Nombramiento finalizado: ${id}`);
-    return nombramiento;
-  }
-
-  async agregarAsignacionSalarial(nombramientoId: string, createAsignacionDto: CreateAsignacionSalarialDto) {
-    this.logger.log(`Agregando asignación salarial al nombramiento: ${nombramientoId}`);
-
-    // Verificar que el nombramiento existe
-    await this.findOne(nombramientoId);
-
-    // Validar fechas
-    if (createAsignacionDto.fechaHasta) {
-      const fechaDesde = new Date(createAsignacionDto.fechaDesde);
-      const fechaHasta = new Date(createAsignacionDto.fechaHasta);
-
-      if (fechaHasta <= fechaDesde) {
-        throw new BadRequestException('La fecha hasta debe ser posterior a la fecha desde');
-      }
-    }
-
-    const asignacion = await this.prisma.asignacionSalarial.create({
-      data: {
-        nombramientoId,
-        categoriaPresupuestaria: createAsignacionDto.categoriaPresupuestaria,
-        monto: createAsignacionDto.monto,
-        moneda: createAsignacionDto.moneda || 'PYG',
-        fechaDesde: new Date(createAsignacionDto.fechaDesde),
-        fechaHasta: createAsignacionDto.fechaHasta
-          ? new Date(createAsignacionDto.fechaHasta)
-          : null,
-        descripcion: createAsignacionDto.descripcion,
-      },
-    });
-
-    this.logger.log(`Asignación salarial creada: ${asignacion.id}`);
-    return asignacion;
-  }
-
-  async getStats() {
-    const [total, vigentes, finalizados, suspendidos, cancelados] = await Promise.all([
-      this.prisma.nombramiento.count(),
-      this.prisma.nombramiento.count({ where: { estadoNombramiento: 'VIGENTE' } }),
-      this.prisma.nombramiento.count({ where: { estadoNombramiento: 'FINALIZADO' } }),
-      this.prisma.nombramiento.count({ where: { estadoNombramiento: 'SUSPENDIDO' } }),
-      this.prisma.nombramiento.count({ where: { estadoNombramiento: 'CANCELADO' } }),
-    ]);
-
-    return {
-      total,
-      porEstado: {
-        vigentes,
-        finalizados,
-        suspendidos,
-        cancelados,
-      },
-    };
   }
 }

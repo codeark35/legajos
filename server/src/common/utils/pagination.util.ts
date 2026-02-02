@@ -1,26 +1,32 @@
-import { PaginatedResponse } from '../interfaces/paginated-response.interface';
-
-export function createPaginatedResponse<T>(
+/**
+ * Construye respuesta paginada estándar
+ */
+export function buildPaginatedResponse<T>(
   data: T[],
   total: number,
   page: number,
-  limit: number,
-): PaginatedResponse<T> {
+  limit: number
+) {
   const totalPages = Math.ceil(total / limit);
+  const hasNextPage = page < totalPages;
+  const hasPreviousPage = page > 1;
 
   return {
     data,
-    meta: {
+    pagination: {
       total,
       page,
       limit,
       totalPages,
-      hasNextPage: page < totalPages,
-      hasPreviousPage: page > 1,
+      hasNextPage,
+      hasPreviousPage,
     },
   };
 }
 
-export function calculateSkip(page: number, limit: number): number {
+/**
+ * Calcula offset para paginación
+ */
+export function calculateOffset(page: number, limit: number): number {
   return (page - 1) * limit;
 }

@@ -1,42 +1,24 @@
-import { IsString, IsNotEmpty, IsOptional, IsInt, Min, MaxLength } from 'class-validator';
-import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { Type } from 'class-transformer';
+import { IsString, IsNotEmpty, MinLength, MaxLength } from 'class-validator';
+import { ApiProperty } from '@nestjs/swagger';
 
 export class CreateCargoDto {
   @ApiProperty({
     description: 'Nombre del cargo',
-    example: 'Director de Carrera',
+    example: 'Decano',
+    minLength: 2,
+    maxLength: 100,
   })
   @IsString()
-  @IsNotEmpty({ message: 'El nombre del cargo es requerido' })
-  @MaxLength(200)
+  @IsNotEmpty()
+  @MinLength(2)
+  @MaxLength(100)
   nombreCargo: string;
 
-  @ApiPropertyOptional({
+  @ApiProperty({
     description: 'Descripción del cargo',
-    example: 'Responsable de la gestión académica de la carrera',
+    example: 'Máxima autoridad de la facultad',
+    required: false,
   })
-  @IsOptional()
   @IsString()
-  @MaxLength(1000)
   descripcion?: string;
-
-  @ApiPropertyOptional({
-    description: 'Nivel jerárquico (1 = más alto)',
-    example: 3,
-  })
-  @IsOptional()
-  @IsInt()
-  @Min(1)
-  @Type(() => Number)
-  nivelJerarquico?: number;
-
-  @ApiPropertyOptional({
-    description: 'Departamento o área del cargo',
-    example: 'Académica',
-  })
-  @IsOptional()
-  @IsString()
-  @MaxLength(200)
-  departamentoArea?: string;
 }
