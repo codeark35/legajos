@@ -16,10 +16,14 @@ export default function LoginPage() {
     setLoading(true);
 
     try {
+      console.log('Intentando login con:', email);
       await login({ email, password });
+      console.log('Login exitoso, redirigiendo...');
       navigate('/dashboard');
     } catch (err: any) {
-      setError(err.response?.data?.message || 'Error al iniciar sesión');
+      console.error('Error en login:', err);
+      const errorMessage = err.response?.data?.message || err.message || 'Error al iniciar sesión';
+      setError(errorMessage);
     } finally {
       setLoading(false);
     }
@@ -30,7 +34,6 @@ export default function LoginPage() {
       <div className="row h-100">
         <div className="col-md-6 d-none d-md-flex align-items-center justify-content-center bg-primary text-white">
           <div className="text-center">
-            <img src="" alt="" />
             <h1 className="display-6 mb-4">Sistema de Legajos</h1>
             <p className="lead">Universidad Nacional de Itapúa</p>
             <p>Gestión integral de expedientes de personal</p>
@@ -94,12 +97,26 @@ export default function LoginPage() {
                 </button>
               </form>
 
-              <div className="mt-4 text-center text-muted">
-                <small>
-                  Credenciales de prueba:<br />
-                  Email: admin@unae.edu.py<br />
-                  Password: Admin123!
-                </small>
+              <div className="mt-4 p-3 bg-light rounded">
+                <div className="text-center mb-2">
+                  <strong>Credenciales de prueba:</strong>
+                </div>
+                <div className="text-muted small">
+                  <div className="mb-2">
+                    <strong>Email:</strong> admin@unae.edu.py<br />
+                    <strong>Password:</strong> Admin123!
+                  </div>
+                  <button
+                    type="button"
+                    className="btn btn-sm btn-outline-secondary w-100"
+                    onClick={() => {
+                      setEmail('admin@unae.edu.py');
+                      setPassword('Admin123!');
+                    }}
+                  >
+                    Usar credenciales de prueba
+                  </button>
+                </div>
               </div>
             </div>
           </div>

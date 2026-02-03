@@ -22,6 +22,7 @@ import { LegajosService } from './legajos.service';
 import { CreateLegajoDto } from './dto/create-legajo.dto';
 import { UpdateLegajoDto } from './dto/update-legajo.dto';
 import { QueryLegajosDto } from './dto/query-legajos.dto';
+import { QueryFuncionariosDto } from './dto/query-funcionarios.dto';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../../common/guards/roles.guard';
 import { Roles } from '../../common/decorators/roles.decorator';
@@ -80,5 +81,22 @@ export class LegajosController {
   @ApiResponse({ status: 404, description: 'Legajo no encontrado' })
   remove(@Param('id') id: string) {
     return this.legajosService.remove(id);
+  }
+
+  @Get('funcionarios-completo')
+  @Roles('ADMIN', 'RECURSOS_HUMANOS', 'CONSULTA', 'USUARIO')
+  @ApiOperation({
+    summary: 'Listar funcionarios completos para vista de accordion',
+    description:
+      'Retorna lista de funcionarios con datos básicos, legajo y nombramiento vigente. ' +
+      'El histórico mensual se carga bajo demanda al expandir el accordion.',
+  })
+  @ApiResponse({
+    status: 200,
+    description:
+      'Lista de funcionarios con datos básicos (sin histórico mensual)',
+  })
+  findAllFuncionarios(@Query() query: QueryFuncionariosDto) {
+    return this.legajosService.findAllFuncionarios(query);
   }
 }

@@ -1,0 +1,1018 @@
+# GUÍA DE INSTRUCCIONES PARA AGENTE DE IA - FRONTEND SISTEMA DE LEGAJOS
+
+## CONTEXTO DEL PROYECTO
+
+Sistema de gestión de legajos de personal con PostgreSQL + Node.js + React + Bootstrap 5.
+El sistema debe cargar automáticamente todos los legajos al abrir la interfaz.
+
+---
+
+## REGLAS FUNDAMENTALES
+
+### 1. CARGA AUTOMÁTICA DE DATOS
+- **SIEMPRE** usar `useEffect` con array de dependencias vacío `[]` para cargar datos al montar el componente
+- **NO ESPERAR** a que el usuario busque o haga clic en nada
+- La carga debe iniciarse inmediatamente al renderizar la página
+
+```javascript
+useEffect(() => {
+  cargarTodosLosLegajos();
+}, []); // IMPORTANTE: Array vacío = se ejecuta solo una vez al montar
+```
+
+### 2. FRAMEWORK CSS
+- **USAR BOOTSTRAP 5** exclusivamente (no Tailwind, no CSS custom innecesario)
+- Utilizar clases de Bootstrap: `container`, `row`, `col-*`, `btn`, `table`, `form-control`, etc.
+- Responsive automático con grid system de Bootstrap
+- Componentes: Modals, Alerts, Badges, Spinners de Bootstrap
+
+### 3. MANEJO DE ESTADOS
+Implementar TODOS estos estados en cada componente:
+
+```javascript
+const [loading, setLoading] = useState(true);    // Estado de carga
+const [error, setError] = useState(null);        // Errores
+const [legajos, setLegajos] = useState([]);      // Datos
+const [searchTerm, setSearchTerm] = useState(''); // Búsqueda
+const [currentPage, setCurrentPage] = useState(1); // Paginación
+```
+
+---
+
+## FLUJO TÉCNICO PASO A PASO
+
+### PASO 1: Estructura del Componente
+```javascript
+import React, { useState, useEffect } from 'react';
+import { Search, Eye, Edit, Trash2, Plus } from 'lucide-react';
+
+const GestionLegajos = () => {
+  // Estados
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [legajos, setLegajos] = useState([]);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [currentPage, setCurrentPage] = useState(1);
+  
+  // Configuración
+  const itemsPerPage = 10;
+  const token = localStorage.getItem('token');
+  
+  // useEffect para carga automática
+  useEffect(() => {
+    cargarTodosLosLegajos();
+  }, []);
+  
+  // Funciones...
+  // Renderizado...
+}
+```
+
+### PASO 2: Función de Carga de Datos
+```javascript
+const cargarTodosLosLegajos = async () => {
+  setLoading(true);
+  setError(null);
+  
+  try {
+    const response = await fetch('/api/legajos', {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`
+      },
+      signal: AbortSignal.timeout(10000) // Timeout de 10 segundos
+    });
+    
+    // Manejo de errores HTTP específicos
+    if (response.status === 401) {
+      localStorage.removeItem('token');
+      window.location.href = '/login';
+      return;
+    }
+    
+    if (response.status === 403) {
+      throw new Error('No tienes permisos para ver legajos');
+    }
+    
+    if (!response.ok) {
+      throw new Error(`Error del servidor: ${response.status}`);
+    }
+    
+    const data = await response.json();
+    
+    // Validar que los datos sean un array
+    if (!Array.isArray(data.legajos)) {
+      throw new Error('Formato de datos inválido');
+    }
+    
+    setLegajos(data.legajos);
+    
+  } catch (error) {
+    if (error.name === 'AbortError') {
+      setError('La solicitud tardó demasiado. Verifica tu conexión.');
+    } else {
+      setError(error.message);
+    }
+    console.error('Error al cargar legajos:', error);
+  } finally {
+    setLoading(false);
+  }
+};
+```
+
+### PASO 3: Filtrado y Paginación
+```javascript
+// Filtrar datos
+const legajosFiltrados = legajos.filter(legajo => {
+  if (!searchTerm) return true;
+  
+  const searchLower = searchTerm.toLowerCase();
+  return (
+    legajo.numero_legajo?.toLowerCase().includes(searchLower) ||
+    legajo.persona?.toLowerCase().includes(searchLower) ||
+    legajo.documento?.toLowerCase().includes(searchLower)
+  );
+});
+
+// Paginación
+const indexOfLastItem = currentPage * itemsPerPage;
+const indexOfFirstItem = indexOfLastItem - itemsPerPage;
+const currentItems = legajosFiltrados.slice(indexOfFirstItem, indexOfLastItem);
+const totalPages = Math.ceil(legajosFiltrados.length / itemsPerPage);
+```
+
+### PASO 4: Renderizado Condicional
+```javascript
+return (
+  <div className="container-fluid py-4">
+    {/* Header con Bootstrap */}
+    <div className="row mb-4">
+      <div className="col">
+        <div className="d-flex justify-content-between align-items-center bg-primary text-white p-3 rounded">
+          <h1 className="mb-0">Gestión de Legajos</h1>
+          <button className="btn btn-success">
+            <Plus size={20} className="me-2" />
+            Nuevo Legajo
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <div className="row">
+      <div className="col">
+        <div className="card shadow-sm">
+          <div className="card-body">
+            {/* ESTADO LOADING */}
+            {loading && (
+              <div className="text-center py-5">
+                <div className="spinner-border text-primary" role="status">
+                  <span className="visually-hidden">Cargando...</span>
+                </div>
+                <p className="mt-3 text-muted">Cargando legajos...</p>
+              </div>
+            )}
+
+            {/* ESTADO ERROR */}
+            {error && !loading && (
+              <div className="alert alert-danger d-flex align-items-center" role="alert">
+                <i className="bi bi-exclamation-triangle-fill me-2"></i>
+                <div>
+                  <strong>Error:</strong> {error}
+                  <button 
+                    className="btn btn-sm btn-outline-danger ms-3"
+                    onClick={cargarTodosLosLegajos}
+                  >
+                    Reintentar
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* ESTADO EMPTY */}
+            {!loading && !error && legajos.length === 0 && (
+              <div className="text-center py-5">
+                <i className="bi bi-folder2-open" style={{fontSize: '4rem', color: '#ccc'}}></i>
+                <h3 className="mt-3 text-muted">No hay legajos registrados</h3>
+                <p className="text-muted">Comienza creando el primer legajo</p>
+                <button className="btn btn-primary mt-3">
+                  Crear Legajo
+                </button>
+              </div>
+            )}
+
+            {/* ESTADO SUCCESS - Tabla con datos */}
+            {!loading && !error && legajos.length > 0 && (
+              <>
+                {/* Barra de búsqueda */}
+                <div className="row mb-3">
+                  <div className="col-md-6">
+                    <div className="input-group">
+                      <span className="input-group-text">
+                        <Search size={20} />
+                      </span>
+                      <input
+                        type="text"
+                        className="form-control"
+                        placeholder="Buscar por número de legajo o persona..."
+                        value={searchTerm}
+                        onChange={(e) => {
+                          setSearchTerm(e.target.value);
+                          setCurrentPage(1);
+                        }}
+                      />
+                    </div>
+                    <small className="text-muted">
+                      Mostrando {currentItems.length} de {legajosFiltrados.length} legajos
+                    </small>
+                  </div>
+                </div>
+
+                {/* Tabla */}
+                <div className="table-responsive">
+                  <table className="table table-hover table-striped align-middle">
+                    <thead className="table-dark">
+                      <tr>
+                        <th>N° Legajo</th>
+                        <th>Persona</th>
+                        <th>Documento</th>
+                        <th>Fecha Ingreso</th>
+                        <th>Estado</th>
+                        <th className="text-center">Acciones</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {currentItems.map((legajo) => (
+                        <tr key={legajo.id}>
+                          <td>{legajo.numero_legajo}</td>
+                          <td>{legajo.persona}</td>
+                          <td>{legajo.documento || '-'}</td>
+                          <td>{formatDate(legajo.fecha_ingreso)}</td>
+                          <td>
+                            <span className={`badge ${
+                              legajo.estado === 'Activo' 
+                                ? 'bg-success' 
+                                : 'bg-secondary'
+                            }`}>
+                              {legajo.estado}
+                            </span>
+                          </td>
+                          <td>
+                            <div className="btn-group" role="group">
+                              <button 
+                                className="btn btn-sm btn-info text-white"
+                                onClick={() => handleVer(legajo)}
+                                title="Ver detalle"
+                              >
+                                <Eye size={16} />
+                              </button>
+                              <button 
+                                className="btn btn-sm btn-warning"
+                                onClick={() => handleEditar(legajo)}
+                                title="Editar"
+                              >
+                                <Edit size={16} />
+                              </button>
+                              <button 
+                                className="btn btn-sm btn-danger"
+                                onClick={() => handleEliminar(legajo)}
+                                title="Eliminar"
+                              >
+                                <Trash2 size={16} />
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+
+                {/* Paginación con Bootstrap */}
+                {totalPages > 1 && (
+                  <nav>
+                    <ul className="pagination justify-content-center">
+                      <li className={`page-item ${currentPage === 1 ? 'disabled' : ''}`}>
+                        <button 
+                          className="page-link"
+                          onClick={() => setCurrentPage(prev => prev - 1)}
+                        >
+                          Anterior
+                        </button>
+                      </li>
+                      
+                      {[...Array(totalPages)].map((_, index) => (
+                        <li 
+                          key={index + 1}
+                          className={`page-item ${currentPage === index + 1 ? 'active' : ''}`}
+                        >
+                          <button 
+                            className="page-link"
+                            onClick={() => setCurrentPage(index + 1)}
+                          >
+                            {index + 1}
+                          </button>
+                        </li>
+                      ))}
+                      
+                      <li className={`page-item ${currentPage === totalPages ? 'disabled' : ''}`}>
+                        <button 
+                          className="page-link"
+                          onClick={() => setCurrentPage(prev => prev + 1)}
+                        >
+                          Siguiente
+                        </button>
+                      </li>
+                    </ul>
+                  </nav>
+                )}
+              </>
+            )}
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+);
+```
+
+---
+
+## COMPONENTES BOOTSTRAP A UTILIZAR
+
+### Layout Principal
+- `container` o `container-fluid` para el contenedor principal
+- `row` y `col-*` para grid system
+- `card` con `card-body` para contenedores de contenido
+
+### Botones
+```html
+<!-- Primario -->
+<button className="btn btn-primary">Texto</button>
+
+<!-- Secundario -->
+<button className="btn btn-secondary">Texto</button>
+
+<!-- Éxito -->
+<button className="btn btn-success">Texto</button>
+
+<!-- Peligro -->
+<button className="btn btn-danger">Texto</button>
+
+<!-- Warning -->
+<button className="btn btn-warning">Texto</button>
+
+<!-- Info -->
+<button className="btn btn-info">Texto</button>
+
+<!-- Tamaños -->
+<button className="btn btn-sm btn-primary">Pequeño</button>
+<button className="btn btn-lg btn-primary">Grande</button>
+
+<!-- Grupos -->
+<div className="btn-group" role="group">
+  <button className="btn btn-info">Ver</button>
+  <button className="btn btn-warning">Editar</button>
+  <button className="btn btn-danger">Eliminar</button>
+</div>
+```
+
+### Tablas
+```html
+<table className="table table-hover table-striped align-middle">
+  <thead className="table-dark">
+    <!-- Headers -->
+  </thead>
+  <tbody>
+    <!-- Filas -->
+  </tbody>
+</table>
+```
+
+### Formularios
+```html
+<div className="mb-3">
+  <label className="form-label">Campo</label>
+  <input type="text" className="form-control" />
+</div>
+
+<div className="input-group">
+  <span className="input-group-text">@</span>
+  <input type="text" className="form-control" />
+</div>
+```
+
+### Alertas
+```html
+<div className="alert alert-success" role="alert">
+  Operación exitosa
+</div>
+
+<div className="alert alert-danger" role="alert">
+  Error en la operación
+</div>
+
+<div className="alert alert-warning" role="alert">
+  Advertencia
+</div>
+```
+
+### Badges
+```html
+<span className="badge bg-success">Activo</span>
+<span className="badge bg-secondary">Inactivo</span>
+<span className="badge bg-primary">Nuevo</span>
+```
+
+### Spinners (Loading)
+```html
+<div className="spinner-border text-primary" role="status">
+  <span className="visually-hidden">Cargando...</span>
+</div>
+
+<!-- Spinner pequeño en botón -->
+<button className="btn btn-primary" disabled>
+  <span className="spinner-border spinner-border-sm me-2"></span>
+  Cargando...
+</button>
+```
+
+### Modals
+```html
+<div className="modal fade" id="exampleModal" tabIndex="-1">
+  <div className="modal-dialog">
+    <div className="modal-content">
+      <div className="modal-header">
+        <h5 className="modal-title">Título</h5>
+        <button type="button" className="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div className="modal-body">
+        Contenido
+      </div>
+      <div className="modal-footer">
+        <button className="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
+        <button className="btn btn-primary">Guardar</button>
+      </div>
+    </div>
+  </div>
+</div>
+```
+
+---
+
+## FUNCIONES AUXILIARES REQUERIDAS
+
+### Formatear Fechas
+```javascript
+const formatDate = (dateString) => {
+  if (!dateString || dateString === 'Invalid Date') return '-';
+  try {
+    const date = new Date(dateString);
+    return date.toLocaleDateString('es-PY', {
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit'
+    });
+  } catch {
+    return '-';
+  }
+};
+```
+
+### Formatear Números (Moneda)
+```javascript
+const formatCurrency = (amount) => {
+  if (!amount && amount !== 0) return '-';
+  return new Intl.NumberFormat('es-PY', {
+    style: 'currency',
+    currency: 'PYG',
+    minimumFractionDigits: 0
+  }).format(amount);
+};
+```
+
+### Confirmar Eliminación
+```javascript
+const handleEliminar = async (legajo) => {
+  if (!window.confirm(`¿Estás seguro de eliminar el legajo ${legajo.numero_legajo}?`)) {
+    return;
+  }
+
+  try {
+    const response = await fetch(`/api/legajos/${legajo.id}`, {
+      method: 'DELETE',
+      headers: {
+        'Authorization': `Bearer ${token}`
+      }
+    });
+
+    if (response.ok) {
+      alert('Legajo eliminado correctamente');
+      cargarTodosLosLegajos(); // Recargar lista
+    } else {
+      throw new Error('Error al eliminar');
+    }
+  } catch (error) {
+    alert('Error al eliminar el legajo: ' + error.message);
+  }
+};
+```
+
+---
+
+## MANEJO DE ERRORES - REGLAS OBLIGATORIAS
+
+### 1. SIEMPRE usar try-catch en operaciones async
+```javascript
+const operacionAsync = async () => {
+  try {
+    // código
+  } catch (error) {
+    console.error('Error:', error);
+    setError(error.message);
+  } finally {
+    setLoading(false);
+  }
+};
+```
+
+### 2. Validar respuestas antes de usar datos
+```javascript
+const data = await response.json();
+
+// SIEMPRE validar tipo de dato esperado
+if (!Array.isArray(data.legajos)) {
+  throw new Error('Formato de datos inválido');
+}
+
+// SIEMPRE validar que existan propiedades esperadas
+if (!data.success) {
+  throw new Error(data.message || 'Error desconocido');
+}
+```
+
+### 3. Manejar códigos HTTP específicos
+```javascript
+if (response.status === 401) {
+  // Token expirado - redirigir a login
+  localStorage.removeItem('token');
+  window.location.href = '/login';
+  return;
+}
+
+if (response.status === 403) {
+  throw new Error('No tienes permisos');
+}
+
+if (response.status === 404) {
+  throw new Error('Recurso no encontrado');
+}
+
+if (response.status === 500) {
+  throw new Error('Error del servidor. Intenta más tarde.');
+}
+```
+
+### 4. Timeouts en todas las peticiones
+```javascript
+const response = await fetch('/api/legajos', {
+  signal: AbortSignal.timeout(10000) // 10 segundos
+});
+```
+
+---
+
+## RESPONSIVE DESIGN CON BOOTSTRAP
+
+### Grid System
+```html
+<!-- Móvil: 1 columna, Tablet: 2 columnas, Desktop: 4 columnas -->
+<div className="row">
+  <div className="col-12 col-md-6 col-lg-3">Contenido</div>
+  <div className="col-12 col-md-6 col-lg-3">Contenido</div>
+  <div className="col-12 col-md-6 col-lg-3">Contenido</div>
+  <div className="col-12 col-md-6 col-lg-3">Contenido</div>
+</div>
+```
+
+### Utilidades Responsive
+```html
+<!-- Ocultar en móvil -->
+<div className="d-none d-md-block">Solo visible en tablet+</div>
+
+<!-- Ocultar en desktop -->
+<div className="d-md-none">Solo visible en móvil</div>
+
+<!-- Padding/Margin responsive -->
+<div className="p-2 p-md-4 p-lg-5">Padding adaptativo</div>
+
+<!-- Texto responsive -->
+<h1 className="fs-3 fs-md-2 fs-lg-1">Título responsive</h1>
+```
+
+### Tablas Responsive
+```html
+<div className="table-responsive">
+  <table className="table">
+    <!-- Contenido -->
+  </table>
+</div>
+```
+
+---
+
+## ACCESIBILIDAD - REGLAS OBLIGATORIAS
+
+### 1. Labels en formularios
+```html
+<label htmlFor="nombre" className="form-label">Nombre</label>
+<input type="text" id="nombre" className="form-control" />
+```
+
+### 2. ARIA labels en botones de íconos
+```html
+<button className="btn btn-primary" aria-label="Ver detalle">
+  <Eye size={16} />
+</button>
+```
+
+### 3. Roles ARIA
+```html
+<div role="alert" className="alert alert-danger">Error</div>
+<div role="status" className="spinner-border"></div>
+```
+
+### 4. Alt en imágenes
+```html
+<img src="foto.jpg" alt="Descripción de la imagen" />
+```
+
+---
+
+## PERFORMANCE - OPTIMIZACIONES REQUERIDAS
+
+### 1. Debounce en búsquedas
+```javascript
+import { useEffect, useState } from 'react';
+
+const [searchTerm, setSearchTerm] = useState('');
+const [debouncedTerm, setDebouncedTerm] = useState('');
+
+useEffect(() => {
+  const timer = setTimeout(() => {
+    setDebouncedTerm(searchTerm);
+  }, 300); // Esperar 300ms después de que usuario deje de escribir
+
+  return () => clearTimeout(timer);
+}, [searchTerm]);
+
+// Usar debouncedTerm para filtrar
+```
+
+### 2. React.memo para componentes que no cambian
+```javascript
+const FilaLegajo = React.memo(({ legajo, onVer, onEditar, onEliminar }) => {
+  return (
+    <tr>
+      {/* contenido */}
+    </tr>
+  );
+});
+```
+
+### 3. Pagination para listas largas
+```javascript
+// NUNCA renderizar más de 50 items a la vez
+const itemsPerPage = 10; // Máximo recomendado: 25
+```
+
+---
+
+## ESTRUCTURA DE ARCHIVOS RECOMENDADA
+
+```
+src/
+├── components/
+│   ├── legajos/
+│   │   ├── GestionLegajos.jsx       // Componente principal
+│   │   ├── DetallegLegajo.jsx       // Vista detalle
+│   │   ├── FormularioLegajo.jsx     // Formulario crear/editar
+│   │   └── FilaLegajo.jsx           // Componente fila de tabla
+│   ├── common/
+│   │   ├── LoadingSpinner.jsx
+│   │   ├── ErrorMessage.jsx
+│   │   ├── EmptyState.jsx
+│   │   └── ConfirmModal.jsx
+│   └── layout/
+│       ├── Header.jsx
+│       ├── Sidebar.jsx
+│       └── Footer.jsx
+├── services/
+│   └── api.js                       // Funciones de API centralizadas
+├── utils/
+│   ├── formatters.js                // Formateo de datos
+│   └── validators.js                // Validaciones
+└── App.jsx
+```
+
+---
+
+## API SERVICE - CENTRALIZAR LLAMADAS
+
+### Crear archivo `services/api.js`
+```javascript
+const API_BASE_URL = process.env.REACT_APP_API_URL || '/api';
+
+const getAuthHeaders = () => ({
+  'Content-Type': 'application/json',
+  'Authorization': `Bearer ${localStorage.getItem('token')}`
+});
+
+export const legajosAPI = {
+  // GET todos los legajos
+  getAll: async () => {
+    const response = await fetch(`${API_BASE_URL}/legajos`, {
+      headers: getAuthHeaders(),
+      signal: AbortSignal.timeout(10000)
+    });
+    
+    if (!response.ok) throw new Error('Error al cargar legajos');
+    return response.json();
+  },
+
+  // GET legajo por ID
+  getById: async (id) => {
+    const response = await fetch(`${API_BASE_URL}/legajos/${id}`, {
+      headers: getAuthHeaders(),
+      signal: AbortSignal.timeout(10000)
+    });
+    
+    if (!response.ok) throw new Error('Legajo no encontrado');
+    return response.json();
+  },
+
+  // POST crear legajo
+  create: async (data) => {
+    const response = await fetch(`${API_BASE_URL}/legajos`, {
+      method: 'POST',
+      headers: getAuthHeaders(),
+      body: JSON.stringify(data)
+    });
+    
+    if (!response.ok) throw new Error('Error al crear legajo');
+    return response.json();
+  },
+
+  // PUT actualizar legajo
+  update: async (id, data) => {
+    const response = await fetch(`${API_BASE_URL}/legajos/${id}`, {
+      method: 'PUT',
+      headers: getAuthHeaders(),
+      body: JSON.stringify(data)
+    });
+    
+    if (!response.ok) throw new Error('Error al actualizar legajo');
+    return response.json();
+  },
+
+  // DELETE eliminar legajo
+  delete: async (id) => {
+    const response = await fetch(`${API_BASE_URL}/legajos/${id}`, {
+      method: 'DELETE',
+      headers: getAuthHeaders()
+    });
+    
+    if (!response.ok) throw new Error('Error al eliminar legajo');
+    return response.json();
+  }
+};
+```
+
+### Usar en componente
+```javascript
+import { legajosAPI } from '../../services/api';
+
+const cargarLegajos = async () => {
+  try {
+    setLoading(true);
+    const data = await legajosAPI.getAll();
+    setLegajos(data.legajos);
+  } catch (error) {
+    setError(error.message);
+  } finally {
+    setLoading(false);
+  }
+};
+```
+
+---
+
+## VALIDACIONES DE FORMULARIOS
+
+### Validación antes de enviar
+```javascript
+const validarFormulario = (datos) => {
+  const errores = {};
+
+  if (!datos.numero_legajo || datos.numero_legajo.trim() === '') {
+    errores.numero_legajo = 'El número de legajo es requerido';
+  }
+
+  if (!datos.id_funcionario) {
+    errores.id_funcionario = 'Debe seleccionar un funcionario';
+  }
+
+  if (datos.presupuestado && isNaN(datos.presupuestado)) {
+    errores.presupuestado = 'El presupuesto debe ser un número';
+  }
+
+  if (datos.presupuestado && datos.presupuestado < 0) {
+    errores.presupuestado = 'El presupuesto no puede ser negativo';
+  }
+
+  return errores;
+};
+
+const handleSubmit = async (e) => {
+  e.preventDefault();
+  
+  const errores = validarFormulario(formData);
+  
+  if (Object.keys(errores).length > 0) {
+    setFormErrors(errores);
+    return;
+  }
+  
+  // Proceder con el envío
+};
+```
+
+### Mostrar errores en formulario
+```html
+<div className="mb-3">
+  <label className="form-label">Número de Legajo</label>
+  <input 
+    type="text"
+    className={`form-control ${formErrors.numero_legajo ? 'is-invalid' : ''}`}
+    value={formData.numero_legajo}
+    onChange={handleChange}
+  />
+  {formErrors.numero_legajo && (
+    <div className="invalid-feedback">
+      {formErrors.numero_legajo}
+    </div>
+  )}
+</div>
+```
+
+---
+
+## NOTIFICACIONES Y FEEDBACK
+
+### Toast Notifications (React-Toastify recomendado)
+```javascript
+import { toast } from 'react-toastify';
+
+// Éxito
+toast.success('Legajo creado exitosamente');
+
+// Error
+toast.error('Error al crear legajo');
+
+// Warning
+toast.warning('Campos incompletos');
+
+// Info
+toast.info('Procesando solicitud...');
+```
+
+### Alternativa con Bootstrap (sin librería externa)
+```javascript
+const [notification, setNotification] = useState(null);
+
+const showNotification = (message, type = 'success') => {
+  setNotification({ message, type });
+  setTimeout(() => setNotification(null), 5000);
+};
+
+// En el render
+{notification && (
+  <div className={`alert alert-${notification.type} alert-dismissible fade show`}>
+    {notification.message}
+    <button 
+      className="btn-close" 
+      onClick={() => setNotification(null)}
+    ></button>
+  </div>
+)}
+```
+
+---
+
+## CHECKLIST FINAL ANTES DE ENTREGAR
+
+Verifica que TODOS estos puntos estén implementados:
+
+- [ ] ✅ useEffect con `[]` carga datos automáticamente al montar
+- [ ] ✅ Estado `loading` implementado con spinner Bootstrap
+- [ ] ✅ Estado `error` implementado con alert Bootstrap
+- [ ] ✅ Estado `empty` implementado con mensaje amigable
+- [ ] ✅ Tabla responsive con `table-responsive`
+- [ ] ✅ Búsqueda funcional que filtra en tiempo real
+- [ ] ✅ Paginación implementada con Bootstrap pagination
+- [ ] ✅ Botones de acción (Ver, Editar, Eliminar) funcionan
+- [ ] ✅ Confirmación antes de eliminar
+- [ ] ✅ Todas las clases son de Bootstrap 5
+- [ ] ✅ Grid system responsive (col-12, col-md-6, etc.)
+- [ ] ✅ try-catch en todas las operaciones async
+- [ ] ✅ Validación de respuestas de API
+- [ ] ✅ Manejo de códigos HTTP (401, 403, 404, 500)
+- [ ] ✅ Timeout de 10 segundos en peticiones
+- [ ] ✅ Formateo de fechas correcto
+- [ ] ✅ Labels en todos los inputs
+- [ ] ✅ ARIA labels en botones de íconos
+- [ ] ✅ Feedback visual en todas las acciones
+- [ ] ✅ Código comentado en partes complejas
+
+---
+
+## EJEMPLO COMPLETO DE LLAMADA A API CON AGREGAR MES
+
+```javascript
+const agregarMes = async (funcionarioCI, mesData) => {
+  try {
+    setLoading(true);
+    setError(null);
+
+    // Validar datos antes de enviar
+    if (!mesData.anio || !mesData.mes) {
+      throw new Error('Año y mes son requeridos');
+    }
+
+    const response = await fetch(`/api/legajos/${funcionarioCI}/agregar-mes`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${localStorage.getItem('token')}`
+      },
+      body: JSON.stringify({
+        anio: mesData.anio,
+        mes: mesData.mes,
+        presupuestado: parseFloat(mesData.presupuestado),
+        devengado: parseFloat(mesData.devengado),
+        aporte_jubilatorio: parseFloat(mesData.aporte_jubilatorio),
+        observaciones: mesData.observaciones || ''
+      }),
+      signal: AbortSignal.timeout(10000)
+    });
+
+    if (response.status === 401) {
+      localStorage.removeItem('token');
+      window.location.href = '/login';
+      return;
+    }
+
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(errorData.message || 'Error al agregar mes');
+    }
+
+    const data = await response.json();
+    
+    // Mostrar notificación de éxito
+    toast.success('Mes agregado exitosamente');
+    
+    // Recargar datos o actualizar estado local
+    await cargarLegajo(funcionarioCI);
+    
+    return data;
+
+  } catch (error) {
+    console.error('Error al agregar mes:', error);
+    setError(error.message);
+    toast.error(error.message);
+    throw error;
+  } finally {
+    setLoading(false);
+  }
+};
+```
+
+---
+
+## NOTAS FINALES PARA EL AGENTE
+
+1. **PRIORIDAD MÁXIMA**: Carga automática con useEffect al montar componente
+2. **FRAMEWORK CSS**: Solo Bootstrap 5, no mezclar con otros frameworks
+3. **ESTADOS**: Implementar loading, error, empty, success SIEMPRE
+4. **ERRORES**: try-catch en TODAS las operaciones async
+5. **VALIDACIÓN**: Validar datos antes de usar y antes de enviar
+6. **RESPONSIVE**: Usar grid system de Bootstrap en todo
+7. **ACCESIBILIDAD**: Labels, ARIA, roles en todos los elementos
+8. **PERFORMANCE**: Paginación, debounce, memo cuando sea necesario
+9. **FEEDBACK**: Usuario debe ver respuesta visual en cada acción
+10. **CÓDIGO LIMPIO**: Componentes pequeños, funciones bien nombradas, comentarios claros
+
+---
+
+**FIN DE LAS INSTRUCCIONES**

@@ -8,6 +8,7 @@ class ApiService {
   constructor() {
     this.api = axios.create({
       baseURL: API_BASE_URL,
+      timeout: 10000, // 10 segundos timeout
       headers: {
         'Content-Type': 'application/json',
       },
@@ -25,16 +26,28 @@ class ApiService {
       (error) => Promise.reject(error)
     );
 
-    // Interceptor para manejar errores de autenticación
+    // Interceptor para manejar errores de autenticación y timeouts
     this.api.interceptors.response.use(
       (response) => response,
       (error: AxiosError) => {
+        // Manejo de token expirado o inválido
         if (error.response?.status === 401) {
-          // Token expirado o inválido
           localStorage.removeItem('access_token');
           localStorage.removeItem('user');
           window.location.href = '/login';
+          return Promise.reject(new Error('Sesión expirada. Por favor, inicia sesión nuevamente.'));
         }
+
+        // Manejo de timeout
+        if (error.code === 'ECONNABORTED' || error.message.includes('timeout')) {
+          return Promise.reject(new Error('La solicitud tardó demasiado. Verifica tu conexión.'));
+        }
+
+        // Manejo de error de red
+        if (!error.response) {
+          return Promise.reject(new Error('Error de conexión. Verifica tu conexión a internet.'));
+        }
+
         return Promise.reject(error);
       }
     );

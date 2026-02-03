@@ -26,8 +26,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const login = async (credentials: LoginCredentials) => {
+    console.log('AuthContext.login - Iniciando login');
     const response = await authService.login(credentials);
+    console.log('AuthContext.login - Respuesta recibida, estableciendo usuario:', response.user);
     setUser(response.user);
+    console.log('AuthContext.login - Usuario establecido en estado');
   };
 
   const logout = () => {

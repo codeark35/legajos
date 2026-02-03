@@ -55,11 +55,11 @@ export class AuthService {
     });
 
     // Generar token
-    const token = this.generateToken(user.id, user.email, user.rol);
+    const access_token = this.generateToken(user.id, user.email, user.rol);
 
     return {
       user,
-      token,
+      access_token,
     };
   }
 
@@ -91,7 +91,7 @@ export class AuthService {
     }
 
     // Generar token
-    const token = this.generateToken(user.id, user.email, user.rol);
+    const access_token = this.generateToken(user.id, user.email, user.rol);
 
     return {
       user: {
@@ -101,7 +101,7 @@ export class AuthService {
         rol: user.rol,
         activo: user.activo,
       },
-      token,
+      access_token,
     };
   }
 

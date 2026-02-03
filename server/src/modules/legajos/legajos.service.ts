@@ -8,6 +8,7 @@ import { PrismaService } from '../../prisma/prisma.service';
 import { CreateLegajoDto } from './dto/create-legajo.dto';
 import { UpdateLegajoDto } from './dto/update-legajo.dto';
 import { QueryLegajosDto } from './dto/query-legajos.dto';
+import { QueryFuncionariosDto } from './dto/query-funcionarios.dto';
 
 @Injectable()
 export class LegajosService {
@@ -256,5 +257,144 @@ export class LegajosService {
     return this.prisma.legajo.delete({
       where: { id },
     });
+  }
+
+  /**
+   * Obtener lista de funcionarios completos para vista de accordion
+   * Incluye datos básicos del funcionario y su legajo activo
+   * El histórico mensual se carga bajo demanda al expandir
+   */
+  async findAllFuncionarios(query: QueryFuncionariosDto) {
+    const { page = 1, limit = 50, search, estadoLegajo = 'ACTIVO' } = query;
+    const skip = (page - 1) * limit;
+
+    const where: any = {
+      estadoLegajo: estadoLegajo,
+    };
+
+    if (search) {
+      where.OR = [
+        { numeroLegajo: { contains: search, mode: 'insensitive' } },
+        {
+          persona: {
+            nombres: { contains: search, mode: 'insensitive' },
+          },
+        },
+        {
+          persona: {
+            apellidos: { contains: search, mode: 'insensitive' },
+          },
+        },
+        {
+          persona: {
+            numeroCedula: { contains: search, mode: 'insensitive' },
+          },
+        },
+      ];
+    }
+
+    const [data, total] = await Promise.all([
+      this.prisma.legajo.findMany({
+        where,
+        skip,
+        take: limit,
+        orderBy: [
+          { persona: { apellidos: 'asc' } },
+          { persona: { nombres: 'asc' } },
+        ],
+        include: {
+          persona: {
+            select: {
+              id: true,
+              nombres: true,
+              apellidos: true,
+              numeroCedula: true,
+              estado: true,
+            },
+          },
+          facultad: {
+            select: {
+              id: true,
+              nombreFacultad: true,
+            },
+          },
+          nombramientos: {
+            where: {
+              vigente: true,
+              estadoNombramiento: 'VIGENTE',
+            },
+            take: 1,
+            orderBy: { fechaInicio: 'desc' },
+            include: {
+              cargo: {
+                select: {
+                  id: true,
+                  nombreCargo: true,
+                },
+              },
+              asignacionPresupuestaria: {
+                select: {
+                  id: true,
+                  salarioBase: true,
+                  moneda: true,
+                  categoriaPresupuestaria: {
+                    select: {
+                      codigoCategoria: true,
+                      descripcion: true,
+                    },
+                  },
+                  lineaPresupuestaria: {
+                    select: {
+                      codigoLinea: true,
+                      descripcion: true,
+                    },
+                  },
+                },
+              },
+            },
+          },
+        },
+      }),
+      this.prisma.legajo.count({ where }),
+    ]);
+
+    // Transformar datos para formato de accordion
+    const funcionarios = data.map((legajo) => {
+      const nombreCompleto = `${legajo.persona.apellidos} ${legajo.persona.nombres}`;
+      const nombramientoActual = legajo.nombramientos[0] || null;
+      const asignacion = nombramientoActual?.asignacionPresupuestaria || null;
+
+      return {
+        id: legajo.id,
+        legajoId: legajo.id,
+        numeroLegajo: legajo.numeroLegajo,
+        personaId: legajo.persona.id,
+        nombreCompleto,
+        nombres: legajo.persona.nombres,
+        apellidos: legajo.persona.apellidos,
+        numeroCedula: legajo.persona.numeroCedula,
+        estado: legajo.persona.estado,
+        estadoLegajo: legajo.estadoLegajo,
+        facultad: legajo.facultad?.nombreFacultad || null,
+        cargo: nombramientoActual?.cargo?.nombreCargo || null,
+        fechaIngreso: legajo.fechaApertura,
+        // Datos de asignación presupuestaria
+        asignacionId: asignacion?.id || null,
+        salarioBase: asignacion?.salarioBase || null,
+        moneda: asignacion?.moneda || 'PYG',
+        categoriaPresupuestaria: asignacion?.categoriaPresupuestaria || null,
+        lineaPresupuestaria: asignacion?.lineaPresupuestaria || null,
+      };
+    });
+
+    return {
+      data: funcionarios,
+      pagination: {
+        total,
+        page,
+        limit,
+        totalPages: Math.ceil(total / limit),
+      },
+    };
   }
 }

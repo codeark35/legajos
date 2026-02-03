@@ -26,6 +26,11 @@ export interface AuthResponse {
   user: Usuario;
 }
 
+export interface LoginResponse {
+  access_token: string;
+  user: Usuario;
+}
+
 // Tipos de Persona
 export interface Persona {
   id: string;
