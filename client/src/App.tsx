@@ -1,4 +1,5 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import type { ReactElement } from 'react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { ToastProvider } from './components/ToastContainer';
@@ -12,11 +13,8 @@ import LegajosListPage from './pages/LegajosListPage';
 import LegajosDetailPage from './pages/LegajosDetailPage';
 import LegajosFormPage from './pages/LegajosFormPage';
 import GestionLegajosPage from './pages/GestionLegajosPage';
-import AsignacionesListPage from './pages/AsignacionesListPage';
-import AsignacionFormPage from './pages/AsignacionFormPage';
-import AsignacionDetailPage from './pages/AsignacionDetailPage';
-import NombramientoAsignacionFormPage from './pages/NombramientoAsignacionFormPage';
-import GestionHistoricaPage from './pages/GestionHistoricaPage';
+import LineasPresupuestariasPage from './pages/LineasPresupuestariasPage';
+import CategoriasPresupuestariasPage from './pages/CategoriasPresupuestariasPage';
 
 // Bootstrap CSS
 import 'bootstrap/dist/css/bootstrap.min.css';
@@ -32,7 +30,7 @@ const queryClient = new QueryClient({
 });
 
 // Componente para proteger rutas
-function PrivateRoute({ children }: { children: JSX.Element }) {
+function PrivateRoute({ children }: { children: ReactElement }) {
   const { isAuthenticated, loading } = useAuth();
 
   if (loading) {
@@ -144,54 +142,20 @@ function App() {
                 }
               />
 
-              {/* Rutas de Asignaciones Presupuestarias */}
+              {/* Rutas de Presupuesto */}
               <Route
-                path="/asignaciones"
+                path="/lineas-presupuestarias"
                 element={
                   <PrivateRoute>
-                    <AsignacionesListPage />
+                    <LineasPresupuestariasPage />
                   </PrivateRoute>
                 }
               />
               <Route
-                path="/asignaciones/nueva"
+                path="/categorias-presupuestarias"
                 element={
                   <PrivateRoute>
-                    <AsignacionFormPage />
-                  </PrivateRoute>
-                }
-              />
-              <Route
-                path="/asignaciones/:id/editar"
-                element={
-                  <PrivateRoute>
-                    <AsignacionFormPage />
-                  </PrivateRoute>
-                }
-              />
-              <Route
-                path="/asignaciones/:id"
-                element={
-                  <PrivateRoute>
-                    <AsignacionDetailPage />
-                  </PrivateRoute>
-                }
-              />
-
-              {/* Rutas de Nombramiento-Asignaciones */}
-              <Route
-                path="/nombramientos/:nombramientoId/asignar-plaza"
-                element={
-                  <PrivateRoute>
-                    <NombramientoAsignacionFormPage />
-                  </PrivateRoute>
-                }
-              />
-              <Route
-                path="/nombramiento-asignaciones/:id/historico"
-                element={
-                  <PrivateRoute>
-                    <GestionHistoricaPage />
+                    <CategoriasPresupuestariasPage />
                   </PrivateRoute>
                 }
               />

@@ -29,8 +29,8 @@ export default function LegajosFormPage() {
   const [errors, setErrors] = useState<any>({});
 
   useEffect(() => {
-    if (isEditing && data?.data) {
-      const legajo = data.data;
+    if (isEditing && data) {
+      const legajo = data;
       setFormData({
         numeroLegajo: legajo.numeroLegajo || '',
         personaId: legajo.personaId || '',
@@ -77,7 +77,7 @@ export default function LegajosFormPage() {
       const dataToSend = {
         ...formData,
         facultadId: formData.facultadId || undefined,
-      };
+      } as any;
 
       if (isEditing) {
         await updateMutation.mutateAsync({ id: id!, data: dataToSend });
@@ -147,7 +147,7 @@ export default function LegajosFormPage() {
                       required
                     >
                       <option value="">Seleccione una persona</option>
-                      {personasData?.data?.data?.map((persona: any) => (
+                      {personasData?.data?.map((persona: any) => (
                         <option key={persona.id} value={persona.id}>
                           {persona.nombres} {persona.apellidos} - {persona.numeroCedula}
                         </option>

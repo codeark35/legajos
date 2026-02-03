@@ -10,10 +10,8 @@ import { NombramientosModule } from './modules/nombramientos/nombramientos.modul
 import { FacultadesModule } from './modules/facultades/facultades.module';
 import { CargosModule } from './modules/cargos/cargos.module';
 import { DocumentosModule } from './modules/documentos/documentos.module';
-import { AsignacionesPresupuestariasModule } from './modules/asignaciones-presupuestarias/asignaciones-presupuestarias.module';
 import { CategoriasPresupuestariasModule } from './modules/categorias-presupuestarias/categorias-presupuestarias.module';
 import { LineasPresupuestariasModule } from './modules/lineas-presupuestarias/lineas-presupuestarias.module';
-import { NombramientoAsignacionesModule } from './modules/nombramiento-asignaciones/nombramiento-asignaciones.module';
 import { AllExceptionsFilter } from './common/filters/http-exception.filter';
 import { TransformInterceptor } from './common/interceptors/transform.interceptor';
 import { LoggingInterceptor } from './common/interceptors/logging.interceptor';
@@ -36,10 +34,8 @@ import { AppController } from './common/app.controller';
     FacultadesModule,
     CargosModule,
     DocumentosModule,
-    AsignacionesPresupuestariasModule,
     CategoriasPresupuestariasModule,
     LineasPresupuestariasModule,
-    NombramientoAsignacionesModule,
   ],
   controllers: [AppController, HealthController],
   providers: [

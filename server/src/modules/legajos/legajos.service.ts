@@ -162,16 +162,6 @@ export class LegajosService {
         nombramientos: {
           include: {
             cargo: true,
-            asignaciones: {
-              include: {
-                asignacionPresupuestaria: {
-                  include: {
-                    categoriaPresupuestaria: true,
-                    lineaPresupuestaria: true,
-                  },
-                },
-              },
-            },
           },
           orderBy: { fechaInicio: 'desc' },
         },
@@ -336,29 +326,6 @@ export class LegajosService {
                   nombreCargo: true,
                 },
               },
-              asignaciones: {
-                include: {
-                  asignacionPresupuestaria: {
-                    select: {
-                      id: true,
-                      salarioBase: true,
-                      moneda: true,
-                      categoriaPresupuestaria: {
-                        select: {
-                          codigoCategoria: true,
-                          descripcion: true,
-                        },
-                      },
-                      lineaPresupuestaria: {
-                        select: {
-                          codigoLinea: true,
-                          descripcion: true,
-                        },
-                      },
-                    },
-                  },
-                },
-              },
             },
           },
         },
@@ -370,8 +337,11 @@ export class LegajosService {
     const funcionarios = data.map((legajo) => {
       const nombreCompleto = `${legajo.persona.apellidos} ${legajo.persona.nombres}`;
       const nombramientoActual = legajo.nombramientos[0] || null;
-      const asignacionActual = nombramientoActual?.asignaciones?.[0] || null;
-      const asignacion = asignacionActual?.asignacionPresupuestaria || null;
+      
+      // Obtener el último mes del histórico para mostrar datos actuales
+      const historico = (nombramientoActual?.historicoMensual as any) || {};
+      const ultimoMes = Object.keys(historico).sort().reverse()[0];
+      const datosUltimoMes = ultimoMes ? historico[ultimoMes] : null;
 
       return {
         id: legajo.id,
@@ -387,12 +357,11 @@ export class LegajosService {
         facultad: legajo.facultad?.nombreFacultad || null,
         cargo: nombramientoActual?.cargo?.nombreCargo || null,
         fechaIngreso: legajo.fechaApertura,
-        // Datos de asignación presupuestaria
-        asignacionId: asignacion?.id || null,
-        salarioBase: asignacion?.salarioBase || null,
-        moneda: asignacion?.moneda || 'PYG',
-        categoriaPresupuestaria: asignacion?.categoriaPresupuestaria || null,
-        lineaPresupuestaria: asignacion?.lineaPresupuestaria || null,
+        // IDs del modelo simplificado
+        nombramientoId: nombramientoActual?.id || null,
+        // Datos del último mes registrado
+        salarioBase: datosUltimoMes?.presupuestado || nombramientoActual?.salarioBase || null,
+        moneda: nombramientoActual?.moneda || 'PYG',
       };
     });
 

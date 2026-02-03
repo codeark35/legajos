@@ -15,26 +15,26 @@ datasource db {
 // ============================================================================
 
 model Persona {
-  id                String    @id @default(uuid())
-  numeroCedula      String    @unique @map("numero_cedula")
-  nombres           String
-  apellidos         String
-  fechaNacimiento   DateTime? @map("fecha_nacimiento") @db.Date
-  direccion         String?
-  telefono          String?
-  email             String?
-  estado            EstadoPersona @default(ACTIVO)
-  
+  id              String        @id @default(uuid())
+  numeroCedula    String        @unique @map("numero_cedula")
+  nombres         String
+  apellidos       String
+  fechaNacimiento DateTime?     @map("fecha_nacimiento") @db.Date
+  direccion       String?
+  telefono        String?
+  email           String?
+  estado          EstadoPersona @default(ACTIVO)
+
   // Timestamps
-  createdAt         DateTime  @default(now()) @map("created_at")
-  updatedAt         DateTime  @updatedAt @map("updated_at")
-  
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
   // Relaciones
-  legajos           Legajo[]
-  
-  @@map("personas")
+  legajos Legajo[]
+
   @@index([numeroCedula])
   @@index([apellidos, nombres])
+  @@map("personas")
 }
 
 enum EstadoPersona {
@@ -48,29 +48,29 @@ enum EstadoPersona {
 // ============================================================================
 
 model Legajo {
-  id                String    @id @default(uuid())
-  numeroLegajo      String?   @unique @map("numero_legajo")
-  personaId         String    @map("persona_id")
-  tipoLegajo        TipoLegajo @default(DOCENTE) @map("tipo_legajo")
-  facultadId        String?   @map("facultad_id")
-  fechaApertura     DateTime  @default(now()) @map("fecha_apertura") @db.Date
-  estadoLegajo      EstadoLegajo @default(ACTIVO) @map("estado_legajo")
-  observaciones     String?   @db.Text
-  
+  id            String       @id @default(uuid())
+  numeroLegajo  String?      @unique @map("numero_legajo")
+  personaId     String       @map("persona_id")
+  tipoLegajo    TipoLegajo   @default(DOCENTE) @map("tipo_legajo")
+  facultadId    String?      @map("facultad_id")
+  fechaApertura DateTime     @default(now()) @map("fecha_apertura") @db.Date
+  estadoLegajo  EstadoLegajo @default(ACTIVO) @map("estado_legajo")
+  observaciones String?      @db.Text
+
   // Timestamps
-  createdAt         DateTime  @default(now()) @map("created_at")
-  updatedAt         DateTime  @updatedAt @map("updated_at")
-  
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
   // Relaciones
-  persona           Persona   @relation(fields: [personaId], references: [id], onDelete: Cascade)
-  facultad          Facultad? @relation(fields: [facultadId], references: [id])
-  nombramientos     Nombramiento[]
-  documentos        Documento[]
-  
-  @@map("legajos")
+  persona       Persona        @relation(fields: [personaId], references: [id], onDelete: Cascade)
+  facultad      Facultad?      @relation(fields: [facultadId], references: [id])
+  nombramientos Nombramiento[]
+  documentos    Documento[]
+
   @@index([personaId])
   @@index([numeroLegajo])
   @@index([estadoLegajo])
+  @@map("legajos")
 }
 
 enum TipoLegajo {
@@ -93,38 +93,41 @@ enum EstadoLegajo {
 // ============================================================================
 
 model Nombramiento {
-  id                    String    @id @default(uuid())
-  legajoId              String    @map("legajo_id")
-  cargoId               String?   @map("cargo_id")
-  tipoNombramiento      String    @map("tipo_nombramiento") // "Docente Técnico", "Director de Carrera", etc.
-  categoria             String?   // Categoría general si aplica
-  fechaInicio           DateTime  @map("fecha_inicio") @db.Date
-  fechaFin              DateTime? @map("fecha_fin") @db.Date
-  resolucionNumero      String?   @map("resolucion_numero")
-  resolucionFecha       DateTime? @map("resolucion_fecha") @db.Date
-  resolucionId          String?   @map("resolucion_id")
-  salarioBase           Decimal?  @map("salario_base") @db.Decimal(15, 2)
-  moneda                String    @default("PYG")
-  vigente               Boolean   @default(true)
-  estadoNombramiento    EstadoNombramiento @default(VIGENTE) @map("estado_nombramiento")
-  observaciones         String?   @db.Text
-  
+  id                 String             @id @default(uuid())
+  legajoId           String             @map("legajo_id")
+  cargoId            String?            @map("cargo_id")
+  tipoNombramiento   String             @map("tipo_nombramiento") // "Docente Técnico", "Director de Carrera", etc.
+  categoria          String? // Categoría general si aplica
+  fechaInicio        DateTime           @map("fecha_inicio") @db.Date
+  fechaFin           DateTime?          @map("fecha_fin") @db.Date
+  resolucionNumero   String?            @map("resolucion_numero")
+  resolucionFecha    DateTime?          @map("resolucion_fecha") @db.Date
+  resolucionId       String?            @map("resolucion_id")
+  salarioBase        Decimal?           @map("salario_base") @db.Decimal(15, 2)
+  moneda             String             @default("PYG")
+  vigente            Boolean            @default(true)
+  estadoNombramiento EstadoNombramiento @default(VIGENTE) @map("estado_nombramiento")
+  observaciones      String?            @db.Text
+
+  // Histórico mensual con todos los datos presupuestarios
+  // Estructura: {"2024-01": {lineaPresupuestariaId, categoriaPresupuestariaId, presupuestado, devengado, ...}, "2024-02": {...}}
+  historicoMensual Json @default("{}") @map("historico_mensual")
+
   // Timestamps
-  createdAt             DateTime  @default(now()) @map("created_at")
-  updatedAt             DateTime  @updatedAt @map("updated_at")
-  
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
   // Relaciones
-  legajo                Legajo    @relation(fields: [legajoId], references: [id], onDelete: Cascade)
-  cargo                 Cargo?    @relation(fields: [cargoId], references: [id])
-  resolucion            Resolucion? @relation(fields: [resolucionId], references: [id])
-  asignaciones          NombramientoAsignacion[]
-  
-  @@map("nombramientos")
+  legajo     Legajo      @relation(fields: [legajoId], references: [id], onDelete: Cascade)
+  cargo      Cargo?      @relation(fields: [cargoId], references: [id])
+  resolucion Resolucion? @relation(fields: [resolucionId], references: [id])
+
   @@index([legajoId])
   @@index([fechaInicio, fechaFin])
   @@index([estadoNombramiento])
   @@index([resolucionNumero])
   @@index([vigente, fechaInicio])
+  @@map("nombramientos")
 }
 
 enum EstadoNombramiento {
@@ -139,105 +142,19 @@ enum EstadoNombramiento {
 // ============================================================================
 
 model LineaPresupuestaria {
-  id                String    @id @default(uuid())
-  codigoLinea       String    @unique @map("codigo_linea") // "100", "200", "300"
-  descripcion       String?   @db.Text
-  tipo              String?   // "DOCENTE", "ADMINISTRATIVO", "TECNICO"
-  vigente           Boolean   @default(true)
-  
+  id          String  @id @default(uuid())
+  codigoLinea String  @unique @map("codigo_linea") // "100", "200", "300"
+  descripcion String? @db.Text
+  tipo        String? // "DOCENTE", "ADMINISTRATIVO", "TECNICO"
+  vigente     Boolean @default(true)
+
   // Timestamps
-  createdAt         DateTime  @default(now()) @map("created_at")
-  updatedAt         DateTime  @updatedAt @map("updated_at")
-  
-  // Relaciones
-  asignaciones      AsignacionPresupuestaria[]
-  
-  @@map("lineas_presupuestarias")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
   @@index([codigoLinea])
   @@index([vigente])
-}
-
-// ============================================================================
-// ASIGNACIONES PRESUPUESTARIAS (con histórico mensual en JSONB)
-// ============================================================================
-
-model AsignacionPresupuestaria {
-  id                          String    @id @default(uuid())
-  
-  // Identificación de la asignación (plaza presupuestaria)
-  codigo                      String?   @unique // Ej: "CAT-L33-001"
-  descripcion                 String?   @db.Text
-  
-  categoriaPresupuestariaId   String?   @map("categoria_presupuestaria_id")
-  lineaPresupuestariaId       String?   @map("linea_presupuestaria_id")
-  objetoGasto                 String?   @map("objeto_gasto") // Código de objeto de gasto
-  
-  // Datos base de la asignación
-  salarioBase                 Decimal   @map("salario_base") @db.Decimal(15, 2)
-  moneda                      String    @default("PYG")
-  vigente                     Boolean   @default(true)
-  
-  // HISTÓRICO MENSUAL CONSOLIDADO (todas las personas que han ocupado esta plaza)
-  // Estructura: {"2024-01": {personas: [...], total...}, "2024-02": {...}}
-  historicoMensualConsolidado Json      @default("{}") @map("historico_mensual_consolidado")
-  
-  // Auditoría
-  fechaCreacion               DateTime  @default(now()) @map("fecha_creacion")
-  fechaUltimaActualizacion    DateTime  @updatedAt @map("fecha_ultima_actualizacion")
-  usuarioUltimaActualizacion  String?   @map("usuario_ultima_actualizacion")
-  
-  // Timestamps
-  createdAt                   DateTime  @default(now()) @map("created_at")
-  updatedAt                   DateTime  @updatedAt @map("updated_at")
-  
-  // Relaciones
-  categoriaPresupuestaria     CategoriaPresupuestaria? @relation(fields: [categoriaPresupuestariaId], references: [id])
-  lineaPresupuestaria         LineaPresupuestaria? @relation(fields: [lineaPresupuestariaId], references: [id])
-  asignacionesNombramientos   NombramientoAsignacion[]
-  
-  @@map("asignaciones_presupuestarias")
-  @@index([codigo])
-  @@index([categoriaPresupuestariaId])
-  @@index([lineaPresupuestariaId])
-  @@index([vigente])
-}
-
-// ============================================================================
-// TABLA INTERMEDIA: NOMBRAMIENTO - ASIGNACIÓN
-// ============================================================================
-
-model NombramientoAsignacion {
-  id                          String    @id @default(uuid())
-  nombramientoId              String    @map("nombramiento_id")
-  asignacionPresupuestariaId  String    @map("asignacion_presupuestaria_id")
-  
-  // Período de vigencia de esta asignación
-  fechaInicio                 DateTime  @map("fecha_inicio") @db.Date
-  fechaFin                    DateTime? @map("fecha_fin") @db.Date
-  
-  // Histórico mensual de ESTE nombramiento con ESTA asignación
-  // Estructura: {"2024-01": {presupuestado, devengado, aportes...}, "2024-02": {...}}
-  historicoMensual            Json      @default("{}") @map("historico_mensual")
-  
-  // Metadata
-  observaciones               String?   @db.Text
-  fechaCarga                  DateTime  @default(now()) @map("fecha_carga")
-  usuarioCarga                String?   @map("usuario_carga")
-  
-  // Timestamps
-  createdAt                   DateTime  @default(now()) @map("created_at")
-  updatedAt                   DateTime  @updatedAt @map("updated_at")
-  
-  // Relaciones
-  nombramiento                Nombramiento @relation(fields: [nombramientoId], references: [id], onDelete: Cascade)
-  asignacionPresupuestaria    AsignacionPresupuestaria @relation(fields: [asignacionPresupuestariaId], references: [id], onDelete: Cascade)
-  
-  @@unique([nombramientoId, asignacionPresupuestariaId, fechaInicio])
-  @@map("nombramiento_asignaciones")
-  @@index([nombramientoId])
-  @@index([asignacionPresupuestariaId])
-  @@index([fechaInicio])
-  @@index([fechaFin])
+  @@map("lineas_presupuestarias")
 }
 
 // ============================================================================
@@ -245,26 +162,23 @@ model NombramientoAsignacion {
 // ============================================================================
 
 model CategoriaPresupuestaria {
-  id                  String    @id @default(uuid())
-  codigoCategoria     String    @unique @map("codigo_categoria") // L33, UU5, B06, L11, L06, L23
-  descripcion         String    @db.Text
-  tipo                String?   // "DOCENTE", "ADMINISTRATIVO", etc.
-  escalaSalarial      String?   @map("escala_salarial") // "UNIVERSITARIA", "ADMINISTRATIVA"
-  rangoSalarialMin    Decimal?  @map("rango_salarial_min") @db.Decimal(15, 2)
-  rangoSalarialMax    Decimal?  @map("rango_salarial_max") @db.Decimal(15, 2)
-  vigente             Boolean   @default(true)
-  
+  id               String   @id @default(uuid())
+  codigoCategoria  String   @unique @map("codigo_categoria") // L33, UU5, B06, L11, L06, L23
+  descripcion      String   @db.Text
+  tipo             String? // "DOCENTE", "ADMINISTRATIVO", etc.
+  escalaSalarial   String?  @map("escala_salarial") // "UNIVERSITARIA", "ADMINISTRATIVA"
+  rangoSalarialMin Decimal? @map("rango_salarial_min") @db.Decimal(15, 2)
+  rangoSalarialMax Decimal? @map("rango_salarial_max") @db.Decimal(15, 2)
+  vigente          Boolean  @default(true)
+
   // Timestamps
-  createdAt           DateTime  @default(now()) @map("created_at")
-  updatedAt           DateTime  @updatedAt @map("updated_at")
-  
-  // Relaciones
-  asignaciones        AsignacionPresupuestaria[]
-  
-  @@map("categorias_presupuestarias")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
   @@index([codigoCategoria])
   @@index([vigente])
   @@index([tipo])
+  @@map("categorias_presupuestarias")
 }
 
 // ============================================================================
@@ -272,21 +186,21 @@ model CategoriaPresupuestaria {
 // ============================================================================
 
 model Cargo {
-  id                String    @id @default(uuid())
-  nombreCargo       String    @map("nombre_cargo")
-  descripcion       String?   @db.Text
-  nivelJerarquico   Int?      @map("nivel_jerarquico")
-  departamentoArea  String?   @map("departamento_area")
-  
+  id               String  @id @default(uuid())
+  nombreCargo      String  @map("nombre_cargo")
+  descripcion      String? @db.Text
+  nivelJerarquico  Int?    @map("nivel_jerarquico")
+  departamentoArea String? @map("departamento_area")
+
   // Timestamps
-  createdAt         DateTime  @default(now()) @map("created_at")
-  updatedAt         DateTime  @updatedAt @map("updated_at")
-  
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
   // Relaciones
-  nombramientos     Nombramiento[]
-  
-  @@map("cargos")
+  nombramientos Nombramiento[]
+
   @@index([nombreCargo])
+  @@map("cargos")
 }
 
 // ============================================================================
@@ -294,23 +208,23 @@ model Cargo {
 // ============================================================================
 
 model Facultad {
-  id              String    @id @default(uuid())
-  nombreFacultad  String    @map("nombre_facultad")
-  codigo          String?   @unique
-  tipo            TipoFacultad @default(FACULTAD)
-  descripcion     String?   @db.Text
-  
+  id             String       @id @default(uuid())
+  nombreFacultad String       @map("nombre_facultad")
+  codigo         String?      @unique
+  tipo           TipoFacultad @default(FACULTAD)
+  descripcion    String?      @db.Text
+
   // Timestamps
-  createdAt       DateTime  @default(now()) @map("created_at")
-  updatedAt       DateTime  @updatedAt @map("updated_at")
-  
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
   // Relaciones
-  legajos         Legajo[]
-  dependencias    DependenciaAcademica[]
-  
-  @@map("facultades_dependencias")
+  legajos      Legajo[]
+  dependencias DependenciaAcademica[]
+
   @@index([codigo])
   @@index([nombreFacultad])
+  @@map("facultades_dependencias")
 }
 
 // ============================================================================
@@ -318,23 +232,23 @@ model Facultad {
 // ============================================================================
 
 model DependenciaAcademica {
-  id              String    @id @default(uuid())
-  facultadId      String    @map("facultad_id")
-  nombre          String
-  codigo          String?   @unique
-  tipo            String?   // "CARRERA", "DEPARTAMENTO", "CATEDRA"
-  descripcion     String?   @db.Text
-  
+  id          String  @id @default(uuid())
+  facultadId  String  @map("facultad_id")
+  nombre      String
+  codigo      String? @unique
+  tipo        String? // "CARRERA", "DEPARTAMENTO", "CATEDRA"
+  descripcion String? @db.Text
+
   // Timestamps
-  createdAt       DateTime  @default(now()) @map("created_at")
-  updatedAt       DateTime  @updatedAt @map("updated_at")
-  
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
   // Relaciones
-  facultad        Facultad  @relation(fields: [facultadId], references: [id], onDelete: Cascade)
-  
-  @@map("dependencias_academicas")
+  facultad Facultad @relation(fields: [facultadId], references: [id], onDelete: Cascade)
+
   @@index([facultadId])
   @@index([codigo])
+  @@map("dependencias_academicas")
 }
 
 enum TipoFacultad {
@@ -350,33 +264,33 @@ enum TipoFacultad {
 // ============================================================================
 
 model Documento {
-  id                    String    @id @default(uuid())
-  legajoId              String    @map("legajo_id")
-  tipoDocumento         TipoDocumento @map("tipo_documento")
-  nombreArchivo         String    @map("nombre_archivo")
-  rutaArchivo           String    @map("ruta_archivo")
-  extension             String
-  tamanioBytes          BigInt    @map("tamanio_bytes")
-  numeroPaginaOriginal  Int?      @map("numero_pagina_original")
-  fechaDocumento        DateTime? @map("fecha_documento") @db.Date
-  fechaCarga            DateTime  @default(now()) @map("fecha_carga")
-  descripcion           String?   @db.Text
-  tags                  String[]  @default([])
-  procesadoOCR          Boolean   @default(false) @map("procesado_ocr")
-  
+  id                   String        @id @default(uuid())
+  legajoId             String        @map("legajo_id")
+  tipoDocumento        TipoDocumento @map("tipo_documento")
+  nombreArchivo        String        @map("nombre_archivo")
+  rutaArchivo          String        @map("ruta_archivo")
+  extension            String
+  tamanioBytes         BigInt        @map("tamanio_bytes")
+  numeroPaginaOriginal Int?          @map("numero_pagina_original")
+  fechaDocumento       DateTime?     @map("fecha_documento") @db.Date
+  fechaCarga           DateTime      @default(now()) @map("fecha_carga")
+  descripcion          String?       @db.Text
+  tags                 String[]      @default([])
+  procesadoOCR         Boolean       @default(false) @map("procesado_ocr")
+
   // Timestamps
-  createdAt             DateTime  @default(now()) @map("created_at")
-  updatedAt             DateTime  @updatedAt @map("updated_at")
-  
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
   // Relaciones
-  legajo                Legajo    @relation(fields: [legajoId], references: [id], onDelete: Cascade)
-  paginas               DocumentoPagina[]
-  
-  @@map("documentos")
+  legajo  Legajo            @relation(fields: [legajoId], references: [id], onDelete: Cascade)
+  paginas DocumentoPagina[]
+
   @@index([legajoId])
   @@index([tipoDocumento])
   @@index([fechaDocumento])
   @@index([tags])
+  @@map("documentos")
 }
 
 enum TipoDocumento {
@@ -398,24 +312,24 @@ enum TipoDocumento {
 // ============================================================================
 
 model DocumentoPagina {
-  id                String    @id @default(uuid())
-  documentoId       String    @map("documento_id")
-  numeroPagina      Int       @map("numero_pagina")
-  rutaImagen        String    @map("ruta_imagen")
-  textoExtraidoOCR  String?   @map("texto_extraido_ocr") @db.Text
-  procesado         Boolean   @default(false)
-  
+  id               String  @id @default(uuid())
+  documentoId      String  @map("documento_id")
+  numeroPagina     Int     @map("numero_pagina")
+  rutaImagen       String  @map("ruta_imagen")
+  textoExtraidoOCR String? @map("texto_extraido_ocr") @db.Text
+  procesado        Boolean @default(false)
+
   // Timestamps
-  createdAt         DateTime  @default(now()) @map("created_at")
-  updatedAt         DateTime  @updatedAt @map("updated_at")
-  
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
   // Relaciones
-  documento         Documento @relation(fields: [documentoId], references: [id], onDelete: Cascade)
-  
+  documento Documento @relation(fields: [documentoId], references: [id], onDelete: Cascade)
+
   @@unique([documentoId, numeroPagina])
-  @@map("documentos_paginas")
   @@index([documentoId])
   @@index([numeroPagina])
+  @@map("documentos_paginas")
 }
 
 // ============================================================================
@@ -423,24 +337,24 @@ model DocumentoPagina {
 // ============================================================================
 
 model Resolucion {
-  id                  String    @id @default(uuid())
-  numeroResolucion    String    @unique @map("numero_resolucion")
-  fechaResolucion     DateTime  @map("fecha_resolucion") @db.Date
-  tipoResolucion      String    @map("tipo_resolucion")
-  descripcion         String?   @db.Text
-  autoridadFirmante   String?   @map("autoridad_firmante")
-  archivoAdjunto      String?   @map("archivo_adjunto")
-  
+  id                String   @id @default(uuid())
+  numeroResolucion  String   @unique @map("numero_resolucion")
+  fechaResolucion   DateTime @map("fecha_resolucion") @db.Date
+  tipoResolucion    String   @map("tipo_resolucion")
+  descripcion       String?  @db.Text
+  autoridadFirmante String?  @map("autoridad_firmante")
+  archivoAdjunto    String?  @map("archivo_adjunto")
+
   // Timestamps
-  createdAt           DateTime  @default(now()) @map("created_at")
-  updatedAt           DateTime  @updatedAt @map("updated_at")
-  
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
   // Relaciones
-  nombramientos       Nombramiento[]
-  
-  @@map("resoluciones")
+  nombramientos Nombramiento[]
+
   @@index([numeroResolucion])
   @@index([fechaResolucion])
+  @@map("resoluciones")
 }
 
 // ============================================================================
@@ -448,21 +362,21 @@ model Resolucion {
 // ============================================================================
 
 model HistorialCambio {
-  id                  String    @id @default(uuid())
-  tablaAfectada       String    @map("tabla_afectada")
-  idRegistroAfectado  String    @map("id_registro_afectado")
-  campoModificado     String    @map("campo_modificado")
-  valorAnterior       String?   @map("valor_anterior") @db.Text
-  valorNuevo          String?   @map("valor_nuevo") @db.Text
-  usuarioModificacion String?   @map("usuario_modificacion")
-  fechaModificacion   DateTime  @default(now()) @map("fecha_modificacion")
-  motivo              String?   @db.Text
-  ipAddress           String?   @map("ip_address")
-  
-  @@map("historial_cambios")
+  id                  String   @id @default(uuid())
+  tablaAfectada       String   @map("tabla_afectada")
+  idRegistroAfectado  String   @map("id_registro_afectado")
+  campoModificado     String   @map("campo_modificado")
+  valorAnterior       String?  @map("valor_anterior") @db.Text
+  valorNuevo          String?  @map("valor_nuevo") @db.Text
+  usuarioModificacion String?  @map("usuario_modificacion")
+  fechaModificacion   DateTime @default(now()) @map("fecha_modificacion")
+  motivo              String?  @db.Text
+  ipAddress           String?  @map("ip_address")
+
   @@index([tablaAfectada, idRegistroAfectado])
   @@index([fechaModificacion])
   @@index([usuarioModificacion])
+  @@map("historial_cambios")
 }
 
 // ============================================================================
@@ -470,20 +384,20 @@ model HistorialCambio {
 // ============================================================================
 
 model Usuario {
-  id            String    @id @default(uuid())
-  email         String    @unique
-  nombreUsuario String    @map("nombre_usuario")
-  passwordHash  String    @map("password_hash")
+  id            String     @id @default(uuid())
+  email         String     @unique
+  nombreUsuario String     @map("nombre_usuario")
+  passwordHash  String     @map("password_hash")
   rol           RolUsuario @default(USUARIO)
-  activo        Boolean   @default(true)
-  
+  activo        Boolean    @default(true)
+
   // Timestamps
-  createdAt     DateTime  @default(now()) @map("created_at")
-  updatedAt     DateTime  @updatedAt @map("updated_at")
-  ultimoAcceso  DateTime? @map("ultimo_acceso")
-  
-  @@map("usuarios")
+  createdAt    DateTime  @default(now()) @map("created_at")
+  updatedAt    DateTime  @updatedAt @map("updated_at")
+  ultimoAcceso DateTime? @map("ultimo_acceso")
+
   @@index([email])
+  @@map("usuarios")
 }
 
 enum RolUsuario {

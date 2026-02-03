@@ -28,8 +28,8 @@ export default function PersonasFormPage() {
   const [errors, setErrors] = useState<any>({});
 
   useEffect(() => {
-    if (isEditing && data?.data) {
-      const persona = data.data;
+    if (isEditing && data) {
+      const persona = data;
       setFormData({
         nombres: persona.nombres || '',
         apellidos: persona.apellidos || '',
@@ -76,9 +76,15 @@ export default function PersonasFormPage() {
 
     try {
       const dataToSend = {
-        ...formData,
+        nombres: formData.nombres,
+        apellidos: formData.apellidos,
+        numeroCedula: formData.numeroCedula,
+        direccion: formData.direccion,
+        telefono: formData.telefono,
+        email: formData.email,
+        estado: formData.estado,
         fechaNacimiento: formData.fechaNacimiento || undefined,
-      };
+      } as any;
 
       if (isEditing) {
         await updateMutation.mutateAsync({ id: id!, data: dataToSend });

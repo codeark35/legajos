@@ -76,7 +76,7 @@ export default function PersonasListPage() {
               </div>
               {search && (
                 <small className="text-muted">
-                  {isSearching ? 'Buscando...' : `${data?.data?.pagination?.total || 0} resultados encontrados`}
+                  {isSearching ? 'Buscando...' : `${(data as any)?.pagination?.total || 0} resultados encontrados`}
                 </small>
               )}
             </div>
@@ -90,7 +90,7 @@ export default function PersonasListPage() {
             <LoadingSkeleton rows={5} columns={5} />
           ) : error ? (
             <ErrorAlert error={error} onRetry={refetch} />
-          ) : data?.data?.data?.length === 0 ? (
+          ) : data?.data?.length === 0 ? (
             <EmptyState
               icon="bi-people"
               title="No hay personas registradas"
@@ -119,14 +119,14 @@ export default function PersonasListPage() {
                     </tr>
                   </thead>
                   <tbody>
-                    {data?.data?.data?.length === 0 ? (
+                    {((data as any)?.data || []).length === 0 ? (
                       <tr>
                         <td colSpan={6} className="text-center text-muted py-4">
                           No se encontraron personas
                         </td>
                       </tr>
                     ) : (
-                      data?.data?.data?.map((persona: any) => (
+                      ((data as any)?.data || []).map((persona: any) => (
                         <tr key={persona.id}>
                           <td>{persona.nombres}</td>
                           <td>{persona.apellidos}</td>
@@ -165,31 +165,31 @@ export default function PersonasListPage() {
                 </table>
               </div>
 
-              {data?.data?.pagination && (
+              {(data as any)?.pagination && (
                 <div className="d-flex justify-content-between align-items-center mt-3">
                   <div className="text-muted">
-                    Mostrando {data.data.pagination.page} de {data.data.pagination.totalPages} páginas
-                    ({data.data.pagination.total} registros totales)
+                    Mostrando {(data as any).pagination.page} de {(data as any).pagination.totalPages} páginas
+                    ({(data as any).pagination.total} registros totales)
                   </div>
                   <nav>
                     <ul className="pagination mb-0">
-                      <li className={`page-item ${data.data.pagination.page === 1 ? 'disabled' : ''}`}>
+                      <li className={`page-item ${(data as any).pagination.page === 1 ? 'disabled' : ''}`}>
                         <button
                           className="page-link"
                           onClick={() => setPage(page - 1)}
-                          disabled={data.data.pagination.page === 1}
+                          disabled={(data as any).pagination.page === 1}
                         >
                           Anterior
                         </button>
                       </li>
                       <li className="page-item active">
-                        <span className="page-link">{data.data.pagination.page}</span>
+                        <span className="page-link">{(data as any).pagination.page}</span>
                       </li>
-                      <li className={`page-item ${data.data.pagination.page >= data.data.pagination.totalPages ? 'disabled' : ''}`}>
+                      <li className={`page-item ${(data as any).pagination.page >= (data as any).pagination.totalPages ? 'disabled' : ''}`}>
                         <button
                           className="page-link"
                           onClick={() => setPage(page + 1)}
-                          disabled={data.data.pagination.page >= data.data.pagination.totalPages}
+                          disabled={(data as any).pagination.page >= (data as any).pagination.totalPages}
                         >
                           Siguiente
                         </button>

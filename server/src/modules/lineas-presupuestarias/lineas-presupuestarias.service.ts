@@ -33,13 +33,6 @@ export class LineasPresupuestariasService {
 
     return this.prisma.lineaPresupuestaria.findMany({
       where,
-      include: {
-        _count: {
-          select: {
-            asignaciones: true,
-          },
-        },
-      },
       orderBy: { codigoLinea: 'asc' },
     });
   }
@@ -84,26 +77,13 @@ export class LineasPresupuestariasService {
   async remove(id: string) {
     const linea = await this.prisma.lineaPresupuestaria.findUnique({
       where: { id },
-      include: {
-        _count: {
-          select: {
-            asignaciones: true,
-          },
-        },
-      },
     });
 
     if (!linea) {
       throw new NotFoundException(`Línea con ID ${id} no encontrada`);
     }
 
-    // Verificar que no tenga asignaciones activas
-    if (linea._count.asignaciones > 0) {
-      throw new ConflictException(
-        'No se puede eliminar una línea con asignaciones presupuestarias asociadas',
-      );
-    }
-
+    // Ya no hay asignaciones en el modelo simplificado
     return this.prisma.lineaPresupuestaria.delete({ where: { id } });
   }
 

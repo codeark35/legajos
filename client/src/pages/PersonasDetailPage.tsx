@@ -4,9 +4,7 @@ import { usePersona } from '../hooks/usePersonas';
 
 export default function PersonasDetailPage() {
   const { id } = useParams<{ id: string }>();
-  const { data, isLoading, error } = usePersona(id!);
-
-  const persona = data?.data;
+  const { data: persona, isLoading, error } = usePersona(id!);
 
   return (
     <Layout>

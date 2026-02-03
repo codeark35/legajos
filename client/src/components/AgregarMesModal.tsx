@@ -1,26 +1,22 @@
 import { useState, useEffect } from 'react';
+import { useQuery } from '@tanstack/react-query';
+import lineasService from '../services/lineas.service';
+import categoriasService from '../services/categorias.service';
 import { useToast } from './ToastContainer';
 import { formatGuaranieInput, parseGuaranieInput } from '../utils/formatters';
+import type { MesData } from '../services/nombramientos.service';
 
 interface AgregarMesModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onSubmit: (anio: number, mes: number, datos: DatosMes) => Promise<void>;
+  onSubmit: (anio: number, mes: number, datos: MesData, lineaPresupuestariaId?: string, categoriaPresupuestariaId?: string) => Promise<void>;
   nombreFuncionario: string;
   datosIniciales?: {
     anio: number;
     mes: number;
-    datos: DatosMes;
+    datos: MesData;
   } | null;
   isEditing?: boolean;
-}
-
-interface DatosMes {
-  presupuestado: number;
-  devengado: number;
-  aportesPatronales?: number;
-  aportesPersonales?: number;
-  observaciones?: string;
 }
 
 const MESES = [
@@ -50,13 +46,29 @@ export default function AgregarMesModal({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const toast = useToast();
 
+  // Cargar líneas y categorías presupuestarias vigentes
+  const { data: lineas = [], isLoading: loadingLineas } = useQuery({
+    queryKey: ['lineas-presupuestarias', 'vigentes'],
+    queryFn: () => lineasService.getAll(true),
+    enabled: isOpen,
+  });
+
+  const { data: categorias = [], isLoading: loadingCategorias } = useQuery({
+    queryKey: ['categorias-presupuestarias', 'vigentes'],
+    queryFn: () => categoriasService.getAll(true),
+    enabled: isOpen,
+  });
+
   const [formData, setFormData] = useState({
     anio: currentYear,
     mes: new Date().getMonth() + 1,
+    lineaPresupuestariaId: '',
+    categoriaPresupuestariaId: '',
     presupuestado: '',
     devengado: '',
-    aportesPatronales: '',
+    aporteJubilatorio: '',
     aportesPersonales: '',
+    objetoGasto: '',
     observaciones: '',
   });
 
@@ -68,10 +80,13 @@ export default function AgregarMesModal({
       setFormData({
         anio: datosIniciales.anio,
         mes: datosIniciales.mes,
+        lineaPresupuestariaId: datosIniciales.datos.lineaPresupuestariaId || '',
+        categoriaPresupuestariaId: datosIniciales.datos.categoriaPresupuestariaId || '',
         presupuestado: formatGuaranieInput(datosIniciales.datos.presupuestado),
         devengado: formatGuaranieInput(datosIniciales.datos.devengado),
-        aportesPatronales: datosIniciales.datos.aportesPatronales ? formatGuaranieInput(datosIniciales.datos.aportesPatronales) : '',
+        aporteJubilatorio: datosIniciales.datos.aporteJubilatorio ? formatGuaranieInput(datosIniciales.datos.aporteJubilatorio) : '',
         aportesPersonales: datosIniciales.datos.aportesPersonales ? formatGuaranieInput(datosIniciales.datos.aportesPersonales) : '',
+        objetoGasto: datosIniciales.datos.objetoGasto || '',
         observaciones: datosIniciales.datos.observaciones || '',
       });
     } else {
@@ -79,10 +94,13 @@ export default function AgregarMesModal({
       setFormData({
         anio: currentYear,
         mes: new Date().getMonth() + 1,
+        lineaPresupuestariaId: '',
+        categoriaPresupuestariaId: '',
         presupuestado: '',
         devengado: '',
-        aportesPatronales: '',
+        aporteJubilatorio: '',
         aportesPersonales: '',
+        objetoGasto: '',
         observaciones: '',
       });
     }
@@ -92,9 +110,18 @@ export default function AgregarMesModal({
   const validate = () => {
     const newErrors: Record<string, string> = {};
 
+    // Validar línea y categoría presupuestaria
+    if (!formData.lineaPresupuestariaId) {
+      newErrors.lineaPresupuestariaId = 'Debe seleccionar una línea presupuestaria';
+    }
+
+    if (!formData.categoriaPresupuestariaId) {
+      newErrors.categoriaPresupuestariaId = 'Debe seleccionar una categoría presupuestaria';
+    }
+
     const presupuestadoNum = parseGuaranieInput(formData.presupuestado);
     const devengadoNum = parseGuaranieInput(formData.devengado);
-    const aportesPatronalesNum = formData.aportesPatronales ? parseGuaranieInput(formData.aportesPatronales) : 0;
+    const aporteJubilatorioNum = formData.aporteJubilatorio ? parseGuaranieInput(formData.aporteJubilatorio) : 0;
     const aportesPersonalesNum = formData.aportesPersonales ? parseGuaranieInput(formData.aportesPersonales) : 0;
 
     if (!formData.presupuestado || presupuestadoNum <= 0) {
@@ -105,8 +132,8 @@ export default function AgregarMesModal({
       newErrors.devengado = 'Debe ingresar un monto devengado válido';
     }
 
-    if (formData.aportesPatronales && aportesPatronalesNum < 0) {
-      newErrors.aportesPatronales = 'El monto no puede ser negativo';
+    if (formData.aporteJubilatorio && aporteJubilatorioNum < 0) {
+      newErrors.aporteJubilatorio = 'El monto no puede ser negativo';
     }
 
     if (formData.aportesPersonales && aportesPersonalesNum < 0) {
@@ -127,19 +154,22 @@ export default function AgregarMesModal({
 
     setIsSubmitting(true);
     try {
-      const datos: DatosMes = {
+      const datos: MesData = {
         presupuestado: parseGuaranieInput(formData.presupuestado),
         devengado: parseGuaranieInput(formData.devengado),
-        aportesPatronales: formData.aportesPatronales
-          ? parseGuaranieInput(formData.aportesPatronales)
-          : undefined,
+        lineaPresupuestariaId: formData.lineaPresupuestariaId,
+        categoriaPresupuestariaId: formData.categoriaPresupuestariaId,
+        aporteJubilatorio: formData.aporteJubilatorio
+          ? parseGuaranieInput(formData.aporteJubilatorio)
+          : 0,
         aportesPersonales: formData.aportesPersonales
           ? parseGuaranieInput(formData.aportesPersonales)
-          : undefined,
+          : 0,
+        objetoGasto: formData.objetoGasto || undefined,
         observaciones: formData.observaciones || undefined,
-      };
+      } as MesData;
 
-      await onSubmit(formData.anio, formData.mes, datos);
+      await onSubmit(formData.anio, formData.mes, datos, formData.lineaPresupuestariaId, formData.categoriaPresupuestariaId);
       toast.success(isEditing ? 'Mes actualizado exitosamente' : 'Mes agregado exitosamente');
       onClose();
     } catch (err: any) {
@@ -151,7 +181,7 @@ export default function AgregarMesModal({
 
   const handleChange = (field: string, value: string) => {
     // Si es un campo de monto, formatear mientras escribe
-    if (['presupuestado', 'devengado', 'aportesPatronales', 'aportesPersonales'].includes(field)) {
+    if (['presupuestado', 'devengado', 'aporteJubilatorio', 'aportesPersonales'].includes(field)) {
       // Permitir solo números
       const cleaned = value.replace(/[^0-9]/g, '');
       if (cleaned) {
@@ -211,6 +241,54 @@ export default function AgregarMesModal({
             <form onSubmit={handleSubmit}>
               <div className="modal-body">
                 <div className="row g-3">
+                  {/* Línea Presupuestaria */}
+                  <div className="col-md-6">
+                    <label htmlFor="lineaPresupuestariaId" className="form-label">
+                      Línea Presupuestaria <span className="text-danger">*</span>
+                    </label>
+                    <select
+                      id="lineaPresupuestariaId"
+                      className={`form-select ${errors.lineaPresupuestariaId ? 'is-invalid' : ''}`}
+                      value={formData.lineaPresupuestariaId}
+                      onChange={(e) => handleChange('lineaPresupuestariaId', e.target.value)}
+                      disabled={isSubmitting || isEditing}
+                    >
+                      <option value="">Seleccione línea...</option>
+                      {lineas.map((linea: any) => (
+                        <option key={linea.id} value={linea.id}>
+                          {linea.codigoLinea} - {linea.descripcion || 'Sin descripción'}
+                        </option>
+                      ))}
+                    </select>
+                    {errors.lineaPresupuestariaId && (
+                      <div className="invalid-feedback d-block">{errors.lineaPresupuestariaId}</div>
+                    )}
+                  </div>
+
+                  {/* Categoría Presupuestaria */}
+                  <div className="col-md-6">
+                    <label htmlFor="categoriaPresupuestariaId" className="form-label">
+                      Categoría Presupuestaria <span className="text-danger">*</span>
+                    </label>
+                    <select
+                      id="categoriaPresupuestariaId"
+                      className={`form-select ${errors.categoriaPresupuestariaId ? 'is-invalid' : ''}`}
+                      value={formData.categoriaPresupuestariaId}
+                      onChange={(e) => handleChange('categoriaPresupuestariaId', e.target.value)}
+                      disabled={isSubmitting || isEditing}
+                    >
+                      <option value="">Seleccione categoría...</option>
+                      {categorias.map((cat: any) => (
+                        <option key={cat.id} value={cat.id}>
+                          {cat.codigoCategoria} - {cat.descripcion}
+                        </option>
+                      ))}
+                    </select>
+                    {errors.categoriaPresupuestariaId && (
+                      <div className="invalid-feedback d-block">{errors.categoriaPresupuestariaId}</div>
+                    )}
+                  </div>
+
                   {/* Año y Mes */}
                   <div className="col-md-6">
                     <label htmlFor="anio" className="form-label">
@@ -296,22 +374,22 @@ export default function AgregarMesModal({
 
                   {/* Aporte Jubilatorio */}
                   <div className="col-md-6">
-                    <label htmlFor="aportesPatronales" className="form-label">
+                    <label htmlFor="aporteJubilatorio" className="form-label">
                       Aporte Jubilatorio
                     </label>
                     <div className="input-group">
                       <span className="input-group-text">₲</span>
                       <input
                         type="text"
-                        id="aportesPatronales"
-                        className={`form-control ${errors.aportesPatronales ? 'is-invalid' : ''}`}
-                        placeholder="604.200"
-                        value={formData.aportesPatronales}
-                        onChange={(e) => handleChange('aportesPatronales', e.target.value)}
+                        id="aporteJubilatorio"
+                        className={`form-control ${errors.aporteJubilatorio ? 'is-invalid' : ''}`}
+                        placeholder="150.000"
+                        value={formData.aporteJubilatorio}
+                        onChange={(e) => handleChange('aporteJubilatorio', e.target.value)}
                         disabled={isSubmitting}
                       />
-                      {errors.aportesPatronales && (
-                        <div className="invalid-feedback">{errors.aportesPatronales}</div>
+                      {errors.aporteJubilatorio && (
+                        <div className="invalid-feedback">{errors.aporteJubilatorio}</div>
                       )}
                     </div>
                   </div>
@@ -336,6 +414,23 @@ export default function AgregarMesModal({
                         <div className="invalid-feedback">{errors.aportesPersonales}</div>
                       )}
                     </div>
+                  </div>
+
+                  {/* Objeto de Gasto */}
+                  <div className="col-md-6">
+                    <label htmlFor="objetoGasto" className="form-label">
+                      Objeto de Gasto
+                    </label>
+                    <input
+                      type="text"
+                      id="objetoGasto"
+                      className="form-control"
+                      placeholder="Ej: 111"
+                      value={formData.objetoGasto}
+                      onChange={(e) => handleChange('objetoGasto', e.target.value)}
+                      disabled={isSubmitting}
+                    />
+                    <small className="form-text text-muted">Código del objeto de gasto</small>
                   </div>
 
                   {/* Observaciones */}

@@ -1,8 +1,6 @@
 import { useParams, Link } from 'react-router-dom';
-import { useMemo } from 'react';
 import Layout from '../components/Layout';
 import { useLegajo } from '../hooks/useLegajos';
-import HistoricoAsignacionesCard from '../components/HistoricoAsignacionesCard';
 
 interface Nombramiento {
   id: string;
@@ -22,12 +20,6 @@ interface Nombramiento {
 export default function LegajosDetailPage() {
   const { id } = useParams<{ id: string }>();
   const { data: legajo, isLoading, error } = useLegajo(id!);
-
-  // Obtener el nombramiento vigente
-  const nombramientoVigente = useMemo(() => {
-    if (!legajo?.nombramientos) return null;
-    return legajo.nombramientos.find((n: Nombramiento) => n.estadoNombramiento === 'VIGENTE');
-  }, [legajo]);
 
   // Verificar si tenemos un ID válido
   if (!id) {
@@ -268,11 +260,6 @@ export default function LegajosDetailPage() {
                     </div>
                   </div>
                 </div>
-
-                {/* Histórico de Asignaciones Presupuestarias */}
-                {nombramientoVigente && (
-                  <HistoricoAsignacionesCard nombramientoId={nombramientoVigente.id} />
-                )}
               </>
             )}
           </div>

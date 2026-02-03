@@ -77,14 +77,34 @@ export default function Layout({ children }: LayoutProps) {
                   Gestión Histórico
                 </Link>
               </li>
-              <li className="nav-item">
-                <Link                  className={`nav-link ${isActive('/asignaciones') ? 'active' : ''}`}
-                  to="/asignaciones"
+              <li className="nav-item dropdown">
+                <a
+                  className="nav-link dropdown-toggle"
+                  href="#"
+                  id="presupuestoDropdown"
+                  role="button"
+                  data-bs-toggle="dropdown"
+                  aria-expanded="false"
                 >
-                  <i className="bi bi-cash-coin me-1"></i>
-                  Asignaciones
-                </Link>
+                  <i className="bi bi-cash-stack me-1"></i>
+                  Presupuesto
+                </a>
+                <ul className="dropdown-menu" aria-labelledby="presupuestoDropdown">
+                  <li>
+                    <Link className="dropdown-item" to="/lineas-presupuestarias">
+                      <i className="bi bi-list-ol me-2"></i>
+                      Líneas Presupuestarias
+                    </Link>
+                  </li>
+                  <li>
+                    <Link className="dropdown-item" to="/categorias-presupuestarias">
+                      <i className="bi bi-tags me-2"></i>
+                      Categorías Presupuestarias
+                    </Link>
+                  </li>
+                </ul>
               </li>
+           
               <li className="nav-item dropdown">
                 <a
                   className="nav-link dropdown-toggle"

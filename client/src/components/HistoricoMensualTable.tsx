@@ -1,19 +1,14 @@
-import { useState } from 'react';
+import React, { useState } from 'react';
 import ConfirmModal from './ConfirmModal';
-
-interface DatosMes {
-  presupuestado: number;
-  devengado: number;
-  aportesPatronales?: number;
-  aportesPersonales?: number;
-  observaciones?: string;
-  fechaRegistro?: string;
-}
+import type { MesData, HistoricoMensual } from '../services/nombramientos.service';
 
 interface HistoricoMensualTableProps {
-  historico: Record<string, Record<string, DatosMes>>;
+  historico: HistoricoMensual;
+  nombramientoId: string;
+  onAgregarMes: () => void;
+  onEditarMes: (anio: number, mes: number, data: MesData) => void;
   onEliminarMes: (anio: number, mes: number) => void;
-  onEditarMes: (anio: number, mes: number, datos: DatosMes) => void;
+  disabled?: boolean;
   isLoading?: boolean;
 }
 
@@ -24,44 +19,49 @@ const MESES_NOMBRES = [
 
 export default function HistoricoMensualTable({
   historico,
-  onEliminarMes,
+  onAgregarMes,
   onEditarMes,
+  onEliminarMes,
+  disabled = false,
   isLoading = false,
 }: HistoricoMensualTableProps) {
+  const [anioSeleccionado, setAnioSeleccionado] = useState<string>('');
   const [mesAEliminar, setMesAEliminar] = useState<{ anio: number; mes: number } | null>(null);
   const [eliminando, setEliminando] = useState(false);
 
-  // Convertir histórico en array ordenado (más reciente primero)
-  const mesesOrdenados: Array<{ anio: number; mes: number; datos: DatosMes }> = [];
-  
-  Object.keys(historico || {})
-    .sort((a, b) => parseInt(b) - parseInt(a)) // Años descendente
-    .forEach((anio) => {
-      Object.keys(historico[anio])
-        .sort((a, b) => parseInt(b) - parseInt(a)) // Meses descendente
-        .forEach((mes) => {
-          mesesOrdenados.push({
-            anio: parseInt(anio),
-            mes: parseInt(mes),
-            datos: historico[anio][mes],
-          });
-        });
-    });
+  // Obtener años disponibles
+  const anios = Object.keys(historico || {}).sort((a, b) => parseInt(b) - parseInt(a));
+
+  // Si no hay año seleccionado, seleccionar el más reciente
+  React.useEffect(() => {
+    if (anios.length > 0 && !anioSeleccionado) {
+      setAnioSeleccionado(anios[0]);
+    }
+  }, [anios, anioSeleccionado]);
+
+  // Obtener meses del año seleccionado
+  const mesesDelAnio = anioSeleccionado && historico[anioSeleccionado] 
+    ? historico[anioSeleccionado] 
+    : {};
+
+  // Ordenar meses del año seleccionado
+  const mesesOrdenados = Object.entries(mesesDelAnio).sort((a, b) => 
+    parseInt(a[0]) - parseInt(b[0])
+  );
 
   // Calcular totales
   const totales = mesesOrdenados.reduce(
-    (acc, item) => ({
-      presupuestado: acc.presupuestado + (item.datos.presupuestado || 0),
-      devengado: acc.devengado + (item.datos.devengado || 0),
-      aportesPatronales: acc.aportesPatronales + (item.datos.aportesPatronales || 0),
-      aportesPersonales: acc.aportesPersonales + (item.datos.aportesPersonales || 0),
+    (acc, [_, mes]) => ({
+      presupuestado: acc.presupuestado + (mes.presupuestado || 0),
+      devengado: acc.devengado + (mes.devengado || 0),
+      aporteJubilatorio: acc.aporteJubilatorio + (mes.aporteJubilatorio || 0),
+      aportesPersonales: acc.aportesPersonales + (mes.aportesPersonales || 0),
     }),
-    { presupuestado: 0, devengado: 0, aportesPatronales: 0, aportesPersonales: 0 }
+    { presupuestado: 0, devengado: 0, aporteJubilatorio: 0, aportesPersonales: 0 }
   );
 
   const handleEliminarConfirm = async () => {
     if (!mesAEliminar) return;
-
     setEliminando(true);
     onEliminarMes(mesAEliminar.anio, mesAEliminar.mes);
     setMesAEliminar(null);
@@ -86,87 +86,163 @@ export default function HistoricoMensualTable({
     );
   }
 
-  if (mesesOrdenados.length === 0) {
+  if (anios.length === 0) {
     return (
       <div className="alert alert-info mb-0">
         <i className="bi bi-info-circle me-2"></i>
-        No hay registros mensuales disponibles. Haz clic en "Agregar Mes" para comenzar.
+        No hay datos mensuales registrados.
+        {!disabled && (
+          <button
+            onClick={onAgregarMes}
+            className="btn btn-sm btn-primary ms-3"
+          >
+            <i className="bi bi-plus-lg me-1"></i>
+            Agregar primer mes
+          </button>
+        )}
       </div>
     );
   }
 
   return (
     <>
+      {/* Header con selector de año y botón agregar */}
+      <div className="d-flex align-items-center justify-content-between mb-3">
+        <div className="d-flex align-items-center gap-3">
+          <label className="form-label mb-0 fw-medium">Año:</label>
+          <select
+            value={anioSeleccionado}
+            onChange={(e) => setAnioSeleccionado(e.target.value)}
+            className="form-select form-select-sm"
+            style={{ width: 'auto' }}
+          >
+            {anios.map((anio) => (
+              <option key={anio} value={anio}>
+                {anio}
+              </option>
+            ))}
+          </select>
+          <span className="badge bg-secondary">
+            {mesesOrdenados.length} {mesesOrdenados.length === 1 ? 'mes' : 'meses'}
+          </span>
+        </div>
+        {!disabled && (
+          <button
+            onClick={onAgregarMes}
+            className="btn btn-sm btn-primary"
+          >
+            <i className="bi bi-plus-lg me-1"></i>
+            Agregar mes
+          </button>
+        )}
+      </div>
+
+      {/* Tabla */}
       <div className="table-responsive">
         <table className="table table-sm table-hover mb-0">
           <thead className="table-light">
             <tr>
-              <th className="text-nowrap">Período</th>
+              <th className="text-nowrap">Mes</th>
+              <th className="text-nowrap">Línea</th>
+              <th className="text-nowrap">Categoría</th>
               <th className="text-end text-nowrap">Presupuestado</th>
               <th className="text-end text-nowrap">Devengado</th>
-              <th className="text-end text-nowrap d-none d-md-table-cell">Aporte Jubilatorio</th>
-              <th className="text-end text-nowrap d-none d-lg-table-cell">Aporte Personal</th>
-              <th className="d-none d-xl-table-cell">Observaciones</th>
+              <th className="text-end text-nowrap d-none d-md-table-cell">Aporte Jub.</th>
+              <th className="text-end text-nowrap d-none d-lg-table-cell">Aporte Pers.</th>
               <th className="text-end text-nowrap">Acciones</th>
             </tr>
           </thead>
           <tbody>
-            {mesesOrdenados.map(({ anio, mes, datos }) => (
-              <tr key={`${anio}-${mes}`}>
+            {mesesOrdenados.map(([mesNum, mesData]) => (
+              <tr key={mesNum}>
+                <td className="fw-medium">{MESES_NOMBRES[parseInt(mesNum) - 1]}</td>
                 <td>
-                  <strong>{MESES_NOMBRES[mes - 1]} {anio}</strong>
+                  <div className="d-flex flex-column">
+                    <span className="fw-medium">{mesData.codigoLinea}</span>
+                    <small className="text-muted text-truncate" style={{ maxWidth: '200px' }}>
+                      {mesData.descripcionLinea}
+                    </small>
+                  </div>
                 </td>
-                <td className="text-end">{formatCurrency(datos.presupuestado)}</td>
-                <td className="text-end">{formatCurrency(datos.devengado)}</td>
+                <td>
+                  <div className="d-flex flex-column">
+                    <span className="fw-medium">{mesData.codigoCategoria}</span>
+                    <small className="text-muted">{mesData.descripcionCategoria}</small>
+                  </div>
+                </td>
+                <td className="text-end">{formatCurrency(mesData.presupuestado)}</td>
+                <td className="text-end">{formatCurrency(mesData.devengado)}</td>
                 <td className="text-end d-none d-md-table-cell">
-                  {datos.aportesPatronales ? formatCurrency(datos.aportesPatronales) : '-'}
+                  {formatCurrency(mesData.aporteJubilatorio || 0)}
                 </td>
                 <td className="text-end d-none d-lg-table-cell">
-                  {datos.aportesPersonales ? formatCurrency(datos.aportesPersonales) : '-'}
-                </td>
-                <td className="d-none d-xl-table-cell">
-                  <small className="text-muted">
-                    {datos.observaciones || '-'}
-                  </small>
+                  {formatCurrency(mesData.aportesPersonales || 0)}
                 </td>
                 <td className="text-end">
-                  <div className="btn-group btn-group-sm">
-                    <button
-                      className="btn btn-outline-primary"
-                      onClick={() => onEditarMes(anio, mes, datos)}
-                      title="Editar"
-                    >
-                      <i className="bi bi-pencil"></i>
-                    </button>
-                    <button
-                      className="btn btn-outline-danger"
-                      onClick={() => setMesAEliminar({ anio, mes })}
-                      title="Eliminar"
-                    >
-                      <i className="bi bi-trash"></i>
-                    </button>
-                  </div>
+                  {!disabled && (
+                    <div className="btn-group btn-group-sm">
+                      <button
+                        className="btn btn-outline-primary"
+                        onClick={() =>
+                          onEditarMes(parseInt(anioSeleccionado), parseInt(mesNum), mesData)
+                        }
+                        title="Editar"
+                      >
+                        <i className="bi bi-pencil"></i>
+                      </button>
+                      <button
+                        className="btn btn-outline-danger"
+                        onClick={() =>
+                          setMesAEliminar({ anio: parseInt(anioSeleccionado), mes: parseInt(mesNum) })
+                        }
+                        title="Eliminar"
+                      >
+                        <i className="bi bi-trash"></i>
+                      </button>
+                    </div>
+                  )}
                 </td>
               </tr>
             ))}
           </tbody>
           <tfoot className="table-light">
             <tr>
-              <td><strong>TOTAL</strong></td>
+              <td colSpan={3}><strong>TOTALES {anioSeleccionado}</strong></td>
               <td className="text-end"><strong>{formatCurrency(totales.presupuestado)}</strong></td>
               <td className="text-end"><strong>{formatCurrency(totales.devengado)}</strong></td>
               <td className="text-end d-none d-md-table-cell">
-                <strong>{formatCurrency(totales.aportesPatronales)}</strong>
+                <strong>{formatCurrency(totales.aporteJubilatorio)}</strong>
               </td>
               <td className="text-end d-none d-lg-table-cell">
                 <strong>{formatCurrency(totales.aportesPersonales)}</strong>
               </td>
-              <td className="d-none d-xl-table-cell"></td>
               <td></td>
             </tr>
           </tfoot>
         </table>
       </div>
+
+      {/* Notas adicionales si existen */}
+      {mesesOrdenados.some(([_, mes]) => mes.observaciones || mes.objetoGasto) && (
+        <div className="mt-3 p-3 bg-light rounded">
+          <h6 className="fw-bold mb-2">Notas adicionales:</h6>
+          <div className="small">
+            {mesesOrdenados
+              .filter(([_, mes]) => mes.observaciones || mes.objetoGasto)
+              .map(([mesNum, mes]) => (
+                <div key={mesNum} className="mb-1">
+                  <strong>{MESES_NOMBRES[parseInt(mesNum) - 1]}:</strong>
+                  {mes.objetoGasto && (
+                    <span className="ms-2 text-muted">Objeto: {mes.objetoGasto}</span>
+                  )}
+                  {mes.observaciones && (
+                    <span className="ms-2">{mes.observaciones}</span>
+                  )}
+                </div>
+              ))}
+          </div>
+        </div>
+      )}
 
       <ConfirmModal
         isOpen={mesAEliminar !== null}

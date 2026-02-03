@@ -42,13 +42,6 @@ export class CategoriasPresupuestariasService {
 
     return this.prisma.categoriaPresupuestaria.findMany({
       where,
-      include: {
-        _count: {
-          select: {
-            asignaciones: true,
-          },
-        },
-      },
       orderBy: { codigoCategoria: 'asc' },
     });
   }
@@ -109,26 +102,13 @@ export class CategoriasPresupuestariasService {
   async remove(id: string) {
     const categoria = await this.prisma.categoriaPresupuestaria.findUnique({
       where: { id },
-      include: {
-        _count: {
-          select: {
-            asignaciones: true,
-          },
-        },
-      },
     });
 
     if (!categoria) {
       throw new NotFoundException(`Categoría con ID ${id} no encontrada`);
     }
 
-    // Verificar que no tenga asignaciones activas
-    if (categoria._count.asignaciones > 0) {
-      throw new ConflictException(
-        'No se puede eliminar una categoría con asignaciones presupuestarias asociadas',
-      );
-    }
-
+    // Ya no hay asignaciones en el modelo simplificado
     return this.prisma.categoriaPresupuestaria.delete({ where: { id } });
   }
 

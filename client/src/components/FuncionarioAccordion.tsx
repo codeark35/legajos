@@ -1,6 +1,6 @@
 import { useState } from 'react';
-import { useQuery } from '@tanstack/react-query';
-import apiService from '../services/api.service';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import nombramientosService, { type MesData, type AgregarMesDto } from '../services/nombramientos.service';
 import HistoricoMensualTable from './HistoricoMensualTable';
 import AgregarMesModal from './AgregarMesModal';
 import { useToast } from './ToastContainer';
@@ -18,25 +18,15 @@ interface Funcionario {
   facultad: string | null;
   cargo: string | null;
   fechaIngreso: string;
-  asignacionId: string | null;
+  nombramientoId: string | null;
   salarioBase: number | null;
   moneda: string;
-  categoriaPresupuestaria: any;
-  lineaPresupuestaria: any;
 }
 
 interface FuncionarioAccordionProps {
   funcionario: Funcionario;
   isOpen: boolean;
   onToggle: () => void;
-}
-
-interface DatosMes {
-  presupuestado: number;
-  devengado: number;
-  aportesPatronales?: number;
-  aportesPersonales?: number;
-  observaciones?: string;
 }
 
 export default function FuncionarioAccordion({
@@ -48,62 +38,112 @@ export default function FuncionarioAccordion({
   const [datosEdicion, setDatosEdicion] = useState<{
     anio: number;
     mes: number;
-    datos: DatosMes;
+    datos: MesData;
   } | null>(null);
   const toast = useToast();
+
+  const queryClient = useQueryClient();
 
   // Cargar histórico solo cuando está expandido
   const {
     data: historicoData,
     isLoading,
-    refetch,
   } = useQuery({
-    queryKey: ['historico-asignacion', funcionario.asignacionId],
+    queryKey: ['historico-nombramiento', funcionario.nombramientoId],
     queryFn: async () => {
-      if (!funcionario.asignacionId) return null;
-      const response = await apiService.get(
-        `/asignaciones-presupuestarias/${funcionario.asignacionId}/historico`
-      );
-      // El backend devuelve { success: true, data: { historico: {...} } }
-      return response.data.data;
+      if (!funcionario.nombramientoId) return null;
+      return await nombramientosService.getHistoricoMensual(funcionario.nombramientoId);
     },
-    enabled: isOpen && !!funcionario.asignacionId,
+    enabled: isOpen && !!funcionario.nombramientoId,
     staleTime: 5 * 60 * 1000, // Cache por 5 minutos
   });
 
-  const handleAgregarMes = async (anio: number, mes: number, datos: DatosMes) => {
-    if (!funcionario.asignacionId) {
-      toast.error('Este funcionario no tiene asignación presupuestaria');
+  const agregarMesMutation = useMutation({
+    mutationFn: (dto: AgregarMesDto) => nombramientosService.agregarMes(funcionario.nombramientoId!, dto),
+    onSuccess: () => {
+      toast.success('Mes agregado exitosamente');
+      queryClient.invalidateQueries({ queryKey: ['historico-nombramiento', funcionario.nombramientoId] });
+      setShowModal(false);
+      setDatosEdicion(null);
+    },
+    onError: (error: any) => {
+      toast.error(error.response?.data?.message || 'Error al agregar el mes');
+    },
+  });
+
+  const actualizarMesMutation = useMutation({
+    mutationFn: ({ anio, mes, dto }: { anio: number; mes: number; dto: AgregarMesDto }) =>
+      nombramientosService.actualizarMes(funcionario.nombramientoId!, anio, mes, dto),
+    onSuccess: () => {
+      toast.success('Mes actualizado exitosamente');
+      queryClient.invalidateQueries({ queryKey: ['historico-nombramiento', funcionario.nombramientoId] });
+      setShowModal(false);
+      setDatosEdicion(null);
+    },
+    onError: (error: any) => {
+      toast.error(error.response?.data?.message || 'Error al actualizar el mes');
+    },
+  });
+
+  const eliminarMesMutation = useMutation({
+    mutationFn: ({ anio, mes }: { anio: number; mes: number }) =>
+      nombramientosService.eliminarMes(funcionario.nombramientoId!, anio, mes),
+    onSuccess: () => {
+      toast.success('Mes eliminado exitosamente');
+      queryClient.invalidateQueries({ queryKey: ['historico-nombramiento', funcionario.nombramientoId] });
+    },
+    onError: (error: any) => {
+      toast.error(error.response?.data?.message || 'Error al eliminar el mes');
+    },
+  });
+
+  const handleAgregarMes = async (
+    anio: number,
+    mes: number,
+    datos: MesData,
+    lineaPresupuestariaId?: string,
+    categoriaPresupuestariaId?: string
+  ) => {
+    if (!funcionario.nombramientoId) {
+      toast.error('El funcionario no tiene un nombramiento vigente');
       return;
     }
 
-    await apiService.post(
-      `/asignaciones-presupuestarias/${funcionario.asignacionId}/historico/${anio}/${mes}`,
-      datos
-    );
-    await refetch();
-    setShowModal(false);
-    setDatosEdicion(null);
+    if (!lineaPresupuestariaId || !categoriaPresupuestariaId) {
+      toast.error('Debe seleccionar línea y categoría presupuestaria');
+      return;
+    }
+
+    const dto: AgregarMesDto = {
+      anio,
+      mes,
+      presupuestado: datos.presupuestado,
+      devengado: datos.devengado,
+      aporteJubilatorio: datos.aporteJubilatorio,
+      aportesPersonales: datos.aportesPersonales,
+      lineaPresupuestariaId,
+      categoriaPresupuestariaId,
+      objetoGasto: datos.objetoGasto,
+      observaciones: datos.observaciones,
+    };
+
+    if (datosEdicion) {
+      // Editar mes existente
+      actualizarMesMutation.mutate({ anio: datosEdicion.anio, mes: datosEdicion.mes, dto });
+    } else {
+      // Agregar nuevo mes
+      agregarMesMutation.mutate(dto);
+    }
   };
 
   const handleEliminarMes = async (anio: number, mes: number) => {
-    if (!funcionario.asignacionId) return;
-
-    await apiService.delete(
-      `/asignaciones-presupuestarias/${funcionario.asignacionId}/historico/${anio}/${mes}`
-    );
-    await refetch();
+    if (!funcionario.nombramientoId) return;
+    eliminarMesMutation.mutate({ anio, mes });
   };
 
-  const handleEditarMes = (anio: number, mes: number) => {
-    const historico = historicoData?.historico || historicoData?.asignacion?.historicoMensual || {};
-    const mesKey = mes.toString().padStart(2, '0');
-    const datos = historico[anio]?.[mesKey];
-
-    if (datos) {
-      setDatosEdicion({ anio, mes, datos });
-      setShowModal(true);
-    }
+  const handleEditarMes = (anio: number, mes: number, datos: MesData) => {
+    setDatosEdicion({ anio, mes, datos });
+    setShowModal(true);
   };
 
   const handleNuevoMes = () => {
@@ -227,7 +267,6 @@ export default function FuncionarioAccordion({
                   <button
                     className="btn btn-primary w-100 h-100"
                     onClick={handleNuevoMes}
-                    disabled={!funcionario.asignacionId}
                   >
                     <i className="bi bi-plus-circle me-2"></i>
                     Agregar Mes
@@ -244,18 +283,16 @@ export default function FuncionarioAccordion({
                   </h5>
                 </div>
                 <div className="card-body p-0">
-                  {!funcionario.asignacionId ? (
+                  {!funcionario.nombramientoId ? (
                     <div className="alert alert-warning mb-0">
                       <i className="bi bi-exclamation-triangle me-2"></i>
-                      Este funcionario no tiene asignación presupuestaria configurada
+                      Este funcionario no tiene un nombramiento vigente
                     </div>
                   ) : (
                     <HistoricoMensualTable
-                      historico={
-                        historicoData?.historico ||
-                        historicoData?.asignacion?.historicoMensual ||
-                        {}
-                      }
+                      historico={historicoData?.historico || {}}
+                      nombramientoId={funcionario.nombramientoId}
+                      onAgregarMes={handleNuevoMes}
                       onEliminarMes={handleEliminarMes}
                       onEditarMes={handleEditarMes}
                       isLoading={isLoading}

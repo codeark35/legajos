@@ -1,6 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { personasService } from '../services/personas.service';
-import type { Persona } from '../types';
 
 export function usePersonas(params?: { search?: string; page?: number; limit?: number }) {
   return useQuery({
@@ -32,7 +31,7 @@ export function useUpdatePersona() {
   const queryClient = useQueryClient();
   
   return useMutation({
-    mutationFn: ({ id, data }: { id: string; data: Partial<Persona> }) =>
+    mutationFn: ({ id, data }: { id: string; data: any }) =>
       personasService.update(id, data),
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ['personas'] });

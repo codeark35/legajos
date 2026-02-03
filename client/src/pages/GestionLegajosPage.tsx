@@ -21,11 +21,9 @@ interface Funcionario {
   facultad: string | null;
   cargo: string | null;
   fechaIngreso: string;
-  asignacionId: string | null;
+  nombramientoId: string | null;
   salarioBase: number | null;
   moneda: string;
-  categoriaPresupuestaria: any;
-  lineaPresupuestaria: any;
 }
 
 export default function GestionLegajosPage() {

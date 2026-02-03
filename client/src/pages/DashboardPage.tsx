@@ -37,12 +37,36 @@ export default function DashboardPage() {
         </div>
 
         <div className="col-6 col-md-3">
-          <Link to="/asignaciones" className="text-decoration-none">
+          <Link to="/gestion-legajos" className="text-decoration-none">
             <div className="card text-center h-100 shadow-sm hover-shadow">
               <div className="card-body">
-                <i className="bi bi-cash-coin text-warning" style={{ fontSize: '2.5rem' }}></i>
-                <h5 className="card-title mt-2 mt-md-3 fs-6 fs-md-5">Asignaciones</h5>
-                <p className="card-text text-muted small d-none d-md-block">Presupuesto mensual</p>
+                <i className="bi bi-calendar3 text-warning" style={{ fontSize: '2.5rem' }}></i>
+                <h5 className="card-title mt-2 mt-md-3 fs-6 fs-md-5">Histórico</h5>
+                <p className="card-text text-muted small d-none d-md-block">Gestión mensual</p>
+              </div>
+            </div>
+          </Link>
+        </div>
+
+        <div className="col-6 col-md-3">
+          <Link to="/lineas-presupuestarias" className="text-decoration-none">
+            <div className="card text-center h-100 shadow-sm hover-shadow">
+              <div className="card-body">
+                <i className="bi bi-list-ol text-info" style={{ fontSize: '2.5rem' }}></i>
+                <h5 className="card-title mt-2 mt-md-3 fs-6 fs-md-5">Líneas</h5>
+                <p className="card-text text-muted small d-none d-md-block">Líneas presupuestarias</p>
+              </div>
+            </div>
+          </Link>
+        </div>
+
+        <div className="col-6 col-md-3">
+          <Link to="/categorias-presupuestarias" className="text-decoration-none">
+            <div className="card text-center h-100 shadow-sm hover-shadow">
+              <div className="card-body">
+                <i className="bi bi-tags text-danger" style={{ fontSize: '2.5rem' }}></i>
+                <h5 className="card-title mt-2 mt-md-3 fs-6 fs-md-5">Categorías</h5>
+                <p className="card-text text-muted small d-none d-md-block">Categorías presupuestarias</p>
               </div>
             </div>
           </Link>
@@ -52,7 +76,7 @@ export default function DashboardPage() {
           <Link to="/personas" className="text-decoration-none">
             <div className="card text-center h-100 shadow-sm hover-shadow">
               <div className="card-body">
-                <i className="bi bi-clock-history text-info" style={{ fontSize: '2.5rem' }}></i>
+                <i className="bi bi-clock-history text-secondary" style={{ fontSize: '2.5rem' }}></i>
                 <h5 className="card-title mt-2 mt-md-3 fs-6 fs-md-5">Auditoría</h5>
                 <p className="card-text text-muted small d-none d-md-block">Historial de cambios</p>
               </div>

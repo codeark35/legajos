@@ -44,6 +44,7 @@ export interface Persona {
   estado: EstadoPersona;
   createdAt: Date;
   updatedAt: Date;
+  legajos?: any[];
 }
 
 export const EstadoPersona = {
@@ -198,48 +199,6 @@ export interface CreateCargoDto {
   departamentoArea?: string;
 }
 
-// Tipos de Asignación Presupuestaria
-export interface AsignacionPresupuestaria {
-  id: string;
-  codigo?: string;
-  descripcion?: string;
-  categoriaPresupuestariaId?: string;
-  lineaPresupuestariaId?: string;
-  objetoGasto?: string;
-  salarioBase: number;
-  moneda: string;
-  vigente: boolean;
-  historicoMensualConsolidado?: any;
-  categoriaPresupuestaria?: CategoriaPresupuestaria;
-  lineaPresupuestaria?: LineaPresupuestaria;
-  _count?: {
-    asignacionesNombramientos?: number;
-  };
-  createdAt: Date;
-  updatedAt: Date;
-}
-
-export interface CreateAsignacionPresupuestariaDto {
-  codigo?: string;
-  descripcion?: string;
-  categoriaPresupuestariaId?: string;
-  lineaPresupuestariaId?: string;
-  objetoGasto?: string;
-  salarioBase: number;
-  moneda?: string;
-}
-
-export interface UpdateAsignacionPresupuestariaDto {
-  codigo?: string;
-  descripcion?: string;
-  categoriaPresupuestariaId?: string;
-  lineaPresupuestariaId?: string;
-  objetoGasto?: string;
-  salarioBase?: number;
-  moneda?: string;
-  vigente?: boolean;
-}
-
 // Tipos de Categoría Presupuestaria
 export interface CategoriaPresupuestaria {
   id: string;
@@ -263,73 +222,6 @@ export interface LineaPresupuestaria {
   vigente: boolean;
   createdAt: Date;
   updatedAt: Date;
-}
-
-// Tipos de Nombramiento-Asignación (Tabla intermedia)
-export interface NombramientoAsignacion {
-  id: string;
-  nombramientoId: string;
-  asignacionPresupuestariaId: string;
-  fechaInicio: Date;
-  fechaFin?: Date;
-  historicoMensual: Record<string, HistoricoMensualData>;
-  observaciones?: string;
-  usuarioCarga?: string;
-  fechaCarga: Date;
-  nombramiento?: Nombramiento;
-  asignacionPresupuestaria?: AsignacionPresupuestaria;
-  createdAt: Date;
-  updatedAt: Date;
-}
-
-export interface HistoricoMensualData {
-  presupuestado: number;
-  devengado?: number;
-  aportesPatronales?: number;
-  aportesPersonales?: number;
-  descuentos?: number;
-  netoRecibido?: number;
-  observaciones?: string;
-  fechaActualizacion?: string;
-}
-
-export interface CreateNombramientoAsignacionDto {
-  nombramientoId: string;
-  asignacionPresupuestariaId: string;
-  fechaInicio: string;
-  fechaFin?: string;
-  observaciones?: string;
-}
-
-export interface UpdateHistoricoMensualDto {
-  anio: number;
-  mes: number;
-  presupuestado: number;
-  devengado?: number;
-  aportesPatronales?: number;
-  aportesPersonales?: number;
-  descuentos?: number;
-  netoRecibido?: number;
-  observaciones?: string;
-}
-
-export interface FinalizarAsignacionDto {
-  fechaFin: string;
-}
-
-export interface PeriodoAsignacion {
-  asignacionId: string;
-  codigo?: string;
-  descripcion?: string;
-  categoria?: string;
-  categoriaDescripcion?: string;
-  linea?: string;
-  lineaDescripcion?: string;
-  fechaInicio: Date;
-  fechaFin?: Date;
-  salarioBase: number;
-  moneda: string;
-  historicoMensual: Record<string, HistoricoMensualData>;
 }
 
 // Tipos de paginación
