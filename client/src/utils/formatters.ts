@@ -95,3 +95,33 @@ export const truncate = (str: string, maxLength: number = 50): string => {
   if (str.length <= maxLength) return str;
   return str.substring(0, maxLength) + '...';
 };
+
+/**
+ * Formatea un número para input con separador de miles (formato guaraníes)
+ * Ejemplo: 3000000 => "3.000.000"
+ */
+export const formatGuaranieInput = (value: number | string): string => {
+  if (!value && value !== 0) return '';
+  
+  // Convertir a número si es string
+  const num = typeof value === 'string' ? parseFloat(value.replace(/\./g, '')) : value;
+  
+  if (isNaN(num)) return '';
+  
+  // Formatear con separador de miles
+  return new Intl.NumberFormat('es-PY').format(num);
+};
+
+/**
+ * Convierte un string con formato guaraníes a número
+ * Ejemplo: "3.000.000" => 3000000
+ */
+export const parseGuaranieInput = (value: string): number => {
+  if (!value) return 0;
+  
+  // Remover todos los puntos (separadores de miles)
+  const cleaned = value.replace(/\./g, '');
+  const num = parseFloat(cleaned);
+  
+  return isNaN(num) ? 0 : num;
+};

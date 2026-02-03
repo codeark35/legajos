@@ -162,10 +162,14 @@ export class LegajosService {
         nombramientos: {
           include: {
             cargo: true,
-            asignacionPresupuestaria: {
+            asignaciones: {
               include: {
-                categoriaPresupuestaria: true,
-                lineaPresupuestaria: true,
+                asignacionPresupuestaria: {
+                  include: {
+                    categoriaPresupuestaria: true,
+                    lineaPresupuestaria: true,
+                  },
+                },
               },
             },
           },
@@ -332,21 +336,25 @@ export class LegajosService {
                   nombreCargo: true,
                 },
               },
-              asignacionPresupuestaria: {
-                select: {
-                  id: true,
-                  salarioBase: true,
-                  moneda: true,
-                  categoriaPresupuestaria: {
+              asignaciones: {
+                include: {
+                  asignacionPresupuestaria: {
                     select: {
-                      codigoCategoria: true,
-                      descripcion: true,
-                    },
-                  },
-                  lineaPresupuestaria: {
-                    select: {
-                      codigoLinea: true,
-                      descripcion: true,
+                      id: true,
+                      salarioBase: true,
+                      moneda: true,
+                      categoriaPresupuestaria: {
+                        select: {
+                          codigoCategoria: true,
+                          descripcion: true,
+                        },
+                      },
+                      lineaPresupuestaria: {
+                        select: {
+                          codigoLinea: true,
+                          descripcion: true,
+                        },
+                      },
                     },
                   },
                 },
@@ -362,7 +370,8 @@ export class LegajosService {
     const funcionarios = data.map((legajo) => {
       const nombreCompleto = `${legajo.persona.apellidos} ${legajo.persona.nombres}`;
       const nombramientoActual = legajo.nombramientos[0] || null;
-      const asignacion = nombramientoActual?.asignacionPresupuestaria || null;
+      const asignacionActual = nombramientoActual?.asignaciones?.[0] || null;
+      const asignacion = asignacionActual?.asignacionPresupuestaria || null;
 
       return {
         id: legajo.id,

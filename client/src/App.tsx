@@ -13,7 +13,10 @@ import LegajosDetailPage from './pages/LegajosDetailPage';
 import LegajosFormPage from './pages/LegajosFormPage';
 import GestionLegajosPage from './pages/GestionLegajosPage';
 import AsignacionesListPage from './pages/AsignacionesListPage';
+import AsignacionFormPage from './pages/AsignacionFormPage';
 import AsignacionDetailPage from './pages/AsignacionDetailPage';
+import NombramientoAsignacionFormPage from './pages/NombramientoAsignacionFormPage';
+import GestionHistoricaPage from './pages/GestionHistoricaPage';
 
 // Bootstrap CSS
 import 'bootstrap/dist/css/bootstrap.min.css';
@@ -151,10 +154,44 @@ function App() {
                 }
               />
               <Route
+                path="/asignaciones/nueva"
+                element={
+                  <PrivateRoute>
+                    <AsignacionFormPage />
+                  </PrivateRoute>
+                }
+              />
+              <Route
+                path="/asignaciones/:id/editar"
+                element={
+                  <PrivateRoute>
+                    <AsignacionFormPage />
+                  </PrivateRoute>
+                }
+              />
+              <Route
                 path="/asignaciones/:id"
                 element={
                   <PrivateRoute>
                     <AsignacionDetailPage />
+                  </PrivateRoute>
+                }
+              />
+
+              {/* Rutas de Nombramiento-Asignaciones */}
+              <Route
+                path="/nombramientos/:nombramientoId/asignar-plaza"
+                element={
+                  <PrivateRoute>
+                    <NombramientoAsignacionFormPage />
+                  </PrivateRoute>
+                }
+              />
+              <Route
+                path="/nombramiento-asignaciones/:id/historico"
+                element={
+                  <PrivateRoute>
+                    <GestionHistoricaPage />
                   </PrivateRoute>
                 }
               />

@@ -102,10 +102,14 @@ export class PersonasService {
               where: { vigente: true },
               include: {
                 cargo: true,
-                asignacionPresupuestaria: {
+                asignaciones: {
                   include: {
-                    categoriaPresupuestaria: true,
-                    lineaPresupuestaria: true,
+                    asignacionPresupuestaria: {
+                      include: {
+                        categoriaPresupuestaria: true,
+                        lineaPresupuestaria: true,
+                      },
+                    },
                   },
                 },
               },

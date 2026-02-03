@@ -58,6 +58,14 @@ export class AsignacionesPresupuestariasController {
     return this.asignacionesService.findAll();
   }
 
+  @Get('disponibles')
+  @Roles('ADMIN', 'RECURSOS_HUMANOS', 'CONSULTA', 'USUARIO')
+  @ApiOperation({ summary: 'Listar asignaciones presupuestarias disponibles (vigentes)' })
+  @ApiResponse({ status: 200, description: 'Lista de asignaciones disponibles' })
+  findDisponibles() {
+    return this.asignacionesService.findDisponibles();
+  }
+
   @Get(':id')
   @Roles('ADMIN', 'RECURSOS_HUMANOS', 'CONSULTA')
   @ApiOperation({ summary: 'Obtener una asignación por ID' })

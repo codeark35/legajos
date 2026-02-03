@@ -61,10 +61,11 @@ export default function FuncionarioAccordion({
     queryKey: ['historico-asignacion', funcionario.asignacionId],
     queryFn: async () => {
       if (!funcionario.asignacionId) return null;
-      const { data } = await apiService.get(
+      const response = await apiService.get(
         `/asignaciones-presupuestarias/${funcionario.asignacionId}/historico`
       );
-      return data;
+      // El backend devuelve { success: true, data: { historico: {...} } }
+      return response.data.data;
     },
     enabled: isOpen && !!funcionario.asignacionId,
     staleTime: 5 * 60 * 1000, // Cache por 5 minutos

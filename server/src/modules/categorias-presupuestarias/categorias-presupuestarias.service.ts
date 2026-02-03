@@ -56,28 +56,6 @@ export class CategoriasPresupuestariasService {
   async findOne(id: string) {
     const categoria = await this.prisma.categoriaPresupuestaria.findUnique({
       where: { id },
-      include: {
-        asignaciones: {
-          include: {
-            nombramiento: {
-              include: {
-                legajo: {
-                  include: {
-                    persona: {
-                      select: {
-                        nombres: true,
-                        apellidos: true,
-                        numeroCedula: true,
-                      },
-                    },
-                  },
-                },
-                cargo: true,
-              },
-            },
-          },
-        },
-      },
     });
 
     if (!categoria) {
@@ -129,10 +107,23 @@ export class CategoriasPresupuestariasService {
   }
 
   async remove(id: string) {
-    const categoria = await this.findOne(id);
+    const categoria = await this.prisma.categoriaPresupuestaria.findUnique({
+      where: { id },
+      include: {
+        _count: {
+          select: {
+            asignaciones: true,
+          },
+        },
+      },
+    });
+
+    if (!categoria) {
+      throw new NotFoundException(`Categoría con ID ${id} no encontrada`);
+    }
 
     // Verificar que no tenga asignaciones activas
-    if (categoria.asignaciones.length > 0) {
+    if (categoria._count.asignaciones > 0) {
       throw new ConflictException(
         'No se puede eliminar una categoría con asignaciones presupuestarias asociadas',
       );

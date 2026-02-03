@@ -18,27 +18,16 @@ export class AsignacionesPresupuestariasService {
   ) {}
 
   async create(createDto: CreateAsignacionPresupuestariaDto) {
-    // Verificar que el nombramiento existe y no tiene ya una asignación
-    const nombramiento = await this.prisma.nombramiento.findUnique({
-      where: { id: createDto.nombramientoId },
-      include: { asignacionPresupuestaria: true },
-    });
-
-    if (!nombramiento) {
-      throw new NotFoundException('El nombramiento no existe');
-    }
-
-    if (nombramiento.asignacionPresupuestaria) {
-      throw new ConflictException(
-        'El nombramiento ya tiene una asignación presupuestaria',
-      );
-    }
+    // Generar código automático si no viene
+    const codigo = createDto.codigo || await this.generarCodigo(createDto);
 
     const data: any = {
-      nombramiento: { connect: { id: createDto.nombramientoId } },
+      codigo,
+      descripcion: createDto.descripcion,
       salarioBase: createDto.salarioBase,
       moneda: createDto.moneda || 'PYG',
-      historicoMensual: {},
+      vigente: createDto.vigente !== undefined ? createDto.vigente : true,
+      historicoMensualConsolidadoConsolidado: {},
     };
 
     if (createDto.categoriaPresupuestariaId) {
@@ -60,22 +49,6 @@ export class AsignacionesPresupuestariasService {
     return this.prisma.asignacionPresupuestaria.create({
       data,
       include: {
-        nombramiento: {
-          include: {
-            legajo: {
-              include: {
-                persona: {
-                  select: {
-                    nombres: true,
-                    apellidos: true,
-                    numeroCedula: true,
-                  },
-                },
-              },
-            },
-            cargo: true,
-          },
-        },
         categoriaPresupuestaria: true,
         lineaPresupuestaria: true,
       },
@@ -85,26 +58,15 @@ export class AsignacionesPresupuestariasService {
   async findAll() {
     return this.prisma.asignacionPresupuestaria.findMany({
       include: {
-        nombramiento: {
-          include: {
-            legajo: {
-              include: {
-                persona: {
-                  select: {
-                    nombres: true,
-                    apellidos: true,
-                    numeroCedula: true,
-                  },
-                },
-              },
-            },
-            cargo: true,
-          },
-        },
         categoriaPresupuestaria: true,
         lineaPresupuestaria: true,
+        _count: {
+          select: {
+            asignacionesNombramientos: true,
+          },
+        },
       },
-      orderBy: { createdAt: 'desc' },
+      orderBy: { codigo: 'asc' },
     });
   }
 
@@ -113,17 +75,6 @@ export class AsignacionesPresupuestariasService {
       await this.prisma.asignacionPresupuestaria.findUnique({
         where: { id },
         include: {
-          nombramiento: {
-            include: {
-              legajo: {
-                include: {
-                  persona: true,
-                  facultad: true,
-                },
-              },
-              cargo: true,
-            },
-          },
           categoriaPresupuestaria: true,
           lineaPresupuestaria: true,
         },
@@ -171,7 +122,6 @@ export class AsignacionesPresupuestariasService {
       where: { id },
       data,
       include: {
-        nombramiento: true,
         categoriaPresupuestaria: true,
         lineaPresupuestaria: true,
       },
@@ -202,7 +152,7 @@ export class AsignacionesPresupuestariasService {
     this.validarAnioMes(anio, mes);
 
     const asignacion = await this.findOne(id);
-    const historico = (asignacion.historicoMensual as any) || {};
+    const historico = (asignacion.historicoMensualConsolidado as any) || {};
 
     // Crear estructura si no existe
     if (!historico[anio]) {
@@ -228,25 +178,12 @@ export class AsignacionesPresupuestariasService {
     const resultado = await this.prisma.asignacionPresupuestaria.update({
       where: { id },
       data: {
-        historicoMensual: historico,
+        historicoMensualConsolidado: historico,
         fechaUltimaActualizacion: new Date(),
       },
       include: {
-        nombramiento: {
-          include: {
-            legajo: {
-              include: {
-                persona: {
-                  select: {
-                    nombres: true,
-                    apellidos: true,
-                  },
-                },
-              },
-            },
-            cargo: true,
-          },
-        },
+        categoriaPresupuestaria: true,
+        lineaPresupuestaria: true,
       },
     });
 
@@ -272,12 +209,14 @@ export class AsignacionesPresupuestariasService {
     return {
       asignacion: {
         id: asignacion.id,
+        codigo: asignacion.codigo,
+        descripcion: asignacion.descripcion,
         salarioBase: asignacion.salarioBase,
         moneda: asignacion.moneda,
-        persona: asignacion.nombramiento.legajo.persona,
-        cargo: asignacion.nombramiento.cargo,
+        categoriaPresupuestaria: asignacion.categoriaPresupuestaria,
+        lineaPresupuestaria: asignacion.lineaPresupuestaria,
       },
-      historico: asignacion.historicoMensual || {},
+      historico: asignacion.historicoMensualConsolidado || {},
     };
   }
 
@@ -288,7 +227,7 @@ export class AsignacionesPresupuestariasService {
     this.validarAnioMes(anio, mes);
 
     const asignacion = await this.findOne(id);
-    const historico = (asignacion.historicoMensual as any) || {};
+    const historico = (asignacion.historicoMensualConsolidado as any) || {};
     const mesKey = mes.toString().padStart(2, '0');
 
     if (!historico[anio] || !historico[anio][mesKey]) {
@@ -301,7 +240,6 @@ export class AsignacionesPresupuestariasService {
       anio,
       mes: mesKey,
       datos: historico[anio][mesKey],
-      persona: asignacion.nombramiento.legajo.persona,
     };
   }
 
@@ -318,7 +256,7 @@ export class AsignacionesPresupuestariasService {
     this.validarAnioMes(anio, mes);
 
     const asignacion = await this.findOne(id);
-    const historico = (asignacion.historicoMensual as any) || {};
+    const historico = (asignacion.historicoMensualConsolidado as any) || {};
     const mesKey = mes.toString().padStart(2, '0');
 
     if (!historico[anio] || !historico[anio][mesKey]) {
@@ -340,7 +278,7 @@ export class AsignacionesPresupuestariasService {
     const resultado = await this.prisma.asignacionPresupuestaria.update({
       where: { id },
       data: {
-        historicoMensual: historico,
+        historicoMensualConsolidado: historico,
         fechaUltimaActualizacion: new Date(),
       },
     });
@@ -367,7 +305,7 @@ export class AsignacionesPresupuestariasService {
     }
 
     const asignacion = await this.findOne(id);
-    const historico = (asignacion.historicoMensual as any) || {};
+    const historico = (asignacion.historicoMensualConsolidado as any) || {};
 
     if (!historico[anio]) {
       return {
@@ -406,7 +344,6 @@ export class AsignacionesPresupuestariasService {
       totalDevengado: totales.devengado,
       totalAportesPatronales: totales.aportesPatronales,
       totalAportesPersonales: totales.aportesPersonales,
-      persona: asignacion.nombramiento.legajo.persona,
     };
   }
 
@@ -439,4 +376,33 @@ export class AsignacionesPresupuestariasService {
     await this.findOne(id);
     return this.auditoria.obtenerHistorialMes(id, anio, mes);
   }
+
+  async findDisponibles() {
+    return this.prisma.asignacionPresupuestaria.findMany({
+      where: { vigente: true },
+      include: {
+        categoriaPresupuestaria: true,
+        lineaPresupuestaria: true,
+      },
+      orderBy: { codigo: 'asc' },
+    });
+  }
+
+  private async generarCodigo(createDto: CreateAsignacionPresupuestariaDto): Promise<string> {
+    let prefijo = 'ASG';
+    
+    if (createDto.categoriaPresupuestariaId) {
+      const categoria = await this.prisma.categoriaPresupuestaria.findUnique({
+        where: { id: createDto.categoriaPresupuestariaId },
+      });
+      if (categoria) {
+        prefijo = `CAT-${categoria.codigoCategoria}`;
+      }
+    }
+    
+    // Generar sufijo aleatorio
+    const sufijo = Math.random().toString(36).substring(2, 8).toUpperCase();
+    return `${prefijo}-${sufijo}`;
+  }
 }
+

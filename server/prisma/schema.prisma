@@ -117,7 +117,7 @@ model Nombramiento {
   legajo                Legajo    @relation(fields: [legajoId], references: [id], onDelete: Cascade)
   cargo                 Cargo?    @relation(fields: [cargoId], references: [id])
   resolucion            Resolucion? @relation(fields: [resolucionId], references: [id])
-  asignacionPresupuestaria AsignacionPresupuestaria?
+  asignaciones          NombramientoAsignacion[]
   
   @@map("nombramientos")
   @@index([legajoId])
@@ -163,7 +163,11 @@ model LineaPresupuestaria {
 
 model AsignacionPresupuestaria {
   id                          String    @id @default(uuid())
-  nombramientoId              String    @unique @map("nombramiento_id")
+  
+  // Identificación de la asignación (plaza presupuestaria)
+  codigo                      String?   @unique // Ej: "CAT-L33-001"
+  descripcion                 String?   @db.Text
+  
   categoriaPresupuestariaId   String?   @map("categoria_presupuestaria_id")
   lineaPresupuestariaId       String?   @map("linea_presupuestaria_id")
   objetoGasto                 String?   @map("objeto_gasto") // Código de objeto de gasto
@@ -171,10 +175,11 @@ model AsignacionPresupuestaria {
   // Datos base de la asignación
   salarioBase                 Decimal   @map("salario_base") @db.Decimal(15, 2)
   moneda                      String    @default("PYG")
+  vigente                     Boolean   @default(true)
   
-  // HISTÓRICO MENSUAL EN JSONB - Clave del sistema
-  // Estructura: {"2024": {"01": {presupuestado, devengado, aportes...}, "02": {...}}, "2025": {...}}
-  historicoMensual            Json      @default("{}") @map("historico_mensual")
+  // HISTÓRICO MENSUAL CONSOLIDADO (todas las personas que han ocupado esta plaza)
+  // Estructura: {"2024-01": {personas: [...], total...}, "2024-02": {...}}
+  historicoMensualConsolidado Json      @default("{}") @map("historico_mensual_consolidado")
   
   // Auditoría
   fechaCreacion               DateTime  @default(now()) @map("fecha_creacion")
@@ -186,14 +191,53 @@ model AsignacionPresupuestaria {
   updatedAt                   DateTime  @updatedAt @map("updated_at")
   
   // Relaciones
-  nombramiento                Nombramiento @relation(fields: [nombramientoId], references: [id], onDelete: Cascade)
   categoriaPresupuestaria     CategoriaPresupuestaria? @relation(fields: [categoriaPresupuestariaId], references: [id])
   lineaPresupuestaria         LineaPresupuestaria? @relation(fields: [lineaPresupuestariaId], references: [id])
+  asignacionesNombramientos   NombramientoAsignacion[]
   
   @@map("asignaciones_presupuestarias")
-  @@index([nombramientoId])
+  @@index([codigo])
   @@index([categoriaPresupuestariaId])
   @@index([lineaPresupuestariaId])
+  @@index([vigente])
+}
+
+// ============================================================================
+// TABLA INTERMEDIA: NOMBRAMIENTO - ASIGNACIÓN
+// ============================================================================
+
+model NombramientoAsignacion {
+  id                          String    @id @default(uuid())
+  nombramientoId              String    @map("nombramiento_id")
+  asignacionPresupuestariaId  String    @map("asignacion_presupuestaria_id")
+  
+  // Período de vigencia de esta asignación
+  fechaInicio                 DateTime  @map("fecha_inicio") @db.Date
+  fechaFin                    DateTime? @map("fecha_fin") @db.Date
+  
+  // Histórico mensual de ESTE nombramiento con ESTA asignación
+  // Estructura: {"2024-01": {presupuestado, devengado, aportes...}, "2024-02": {...}}
+  historicoMensual            Json      @default("{}") @map("historico_mensual")
+  
+  // Metadata
+  observaciones               String?   @db.Text
+  fechaCarga                  DateTime  @default(now()) @map("fecha_carga")
+  usuarioCarga                String?   @map("usuario_carga")
+  
+  // Timestamps
+  createdAt                   DateTime  @default(now()) @map("created_at")
+  updatedAt                   DateTime  @updatedAt @map("updated_at")
+  
+  // Relaciones
+  nombramiento                Nombramiento @relation(fields: [nombramientoId], references: [id], onDelete: Cascade)
+  asignacionPresupuestaria    AsignacionPresupuestaria @relation(fields: [asignacionPresupuestariaId], references: [id], onDelete: Cascade)
+  
+  @@unique([nombramientoId, asignacionPresupuestariaId, fechaInicio])
+  @@map("nombramiento_asignaciones")
+  @@index([nombramientoId])
+  @@index([asignacionPresupuestariaId])
+  @@index([fechaInicio])
+  @@index([fechaFin])
 }
 
 // ============================================================================

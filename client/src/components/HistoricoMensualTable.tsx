@@ -1,5 +1,4 @@
 import { useState } from 'react';
-import { useToast } from './ToastContainer';
 import ConfirmModal from './ConfirmModal';
 
 interface DatosMes {
@@ -13,8 +12,8 @@ interface DatosMes {
 
 interface HistoricoMensualTableProps {
   historico: Record<string, Record<string, DatosMes>>;
-  onEliminarMes: (anio: number, mes: number) => Promise<void>;
-  onEditarMes: (anio: number, mes: number) => void;
+  onEliminarMes: (anio: number, mes: number) => void;
+  onEditarMes: (anio: number, mes: number, datos: DatosMes) => void;
   isLoading?: boolean;
 }
 
@@ -31,7 +30,6 @@ export default function HistoricoMensualTable({
 }: HistoricoMensualTableProps) {
   const [mesAEliminar, setMesAEliminar] = useState<{ anio: number; mes: number } | null>(null);
   const [eliminando, setEliminando] = useState(false);
-  const toast = useToast();
 
   // Convertir histórico en array ordenado (más reciente primero)
   const mesesOrdenados: Array<{ anio: number; mes: number; datos: DatosMes }> = [];
@@ -65,15 +63,9 @@ export default function HistoricoMensualTable({
     if (!mesAEliminar) return;
 
     setEliminando(true);
-    try {
-      await onEliminarMes(mesAEliminar.anio, mesAEliminar.mes);
-      toast.success('Mes eliminado exitosamente');
-      setMesAEliminar(null);
-    } catch (err: any) {
-      toast.error(err.response?.data?.message || 'Error al eliminar mes');
-    } finally {
-      setEliminando(false);
-    }
+    onEliminarMes(mesAEliminar.anio, mesAEliminar.mes);
+    setMesAEliminar(null);
+    setEliminando(false);
   };
 
   const formatCurrency = (value: number) => {
@@ -112,7 +104,7 @@ export default function HistoricoMensualTable({
               <th className="text-nowrap">Período</th>
               <th className="text-end text-nowrap">Presupuestado</th>
               <th className="text-end text-nowrap">Devengado</th>
-              <th className="text-end text-nowrap d-none d-md-table-cell">Aporte Patronal</th>
+              <th className="text-end text-nowrap d-none d-md-table-cell">Aporte Jubilatorio</th>
               <th className="text-end text-nowrap d-none d-lg-table-cell">Aporte Personal</th>
               <th className="d-none d-xl-table-cell">Observaciones</th>
               <th className="text-end text-nowrap">Acciones</th>
@@ -141,7 +133,7 @@ export default function HistoricoMensualTable({
                   <div className="btn-group btn-group-sm">
                     <button
                       className="btn btn-outline-primary"
-                      onClick={() => onEditarMes(anio, mes)}
+                      onClick={() => onEditarMes(anio, mes, datos)}
                       title="Editar"
                     >
                       <i className="bi bi-pencil"></i>

@@ -47,28 +47,6 @@ export class LineasPresupuestariasService {
   async findOne(id: string) {
     const linea = await this.prisma.lineaPresupuestaria.findUnique({
       where: { id },
-      include: {
-        asignaciones: {
-          include: {
-            nombramiento: {
-              include: {
-                legajo: {
-                  include: {
-                    persona: {
-                      select: {
-                        nombres: true,
-                        apellidos: true,
-                        numeroCedula: true,
-                      },
-                    },
-                  },
-                },
-                cargo: true,
-              },
-            },
-          },
-        },
-      },
     });
 
     if (!linea) {
@@ -104,10 +82,23 @@ export class LineasPresupuestariasService {
   }
 
   async remove(id: string) {
-    const linea = await this.findOne(id);
+    const linea = await this.prisma.lineaPresupuestaria.findUnique({
+      where: { id },
+      include: {
+        _count: {
+          select: {
+            asignaciones: true,
+          },
+        },
+      },
+    });
+
+    if (!linea) {
+      throw new NotFoundException(`Línea con ID ${id} no encontrada`);
+    }
 
     // Verificar que no tenga asignaciones activas
-    if (linea.asignaciones.length > 0) {
+    if (linea._count.asignaciones > 0) {
       throw new ConflictException(
         'No se puede eliminar una línea con asignaciones presupuestarias asociadas',
       );

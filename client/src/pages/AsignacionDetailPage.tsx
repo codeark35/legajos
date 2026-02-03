@@ -38,16 +38,16 @@ export default function AsignacionDetailPage() {
   const eliminarMesMutation = useEliminarMes();
 
   const [formData, setFormData] = useState({
-    montoTotal: '',
-    horasExtras: '',
-    bonificaciones: '',
-    descuentos: '',
+    presupuestado: '',
+    devengado: '',
+    aportesPatronales: '',
+    aportesPersonales: '',
     observaciones: '',
   });
 
   const handleAgregarMes = async (mes: number) => {
-    if (!formData.montoTotal) {
-      alert('Debe ingresar el monto total');
+    if (!formData.presupuestado || !formData.devengado) {
+      alert('Debe ingresar el presupuestado y devengado');
       return;
     }
 
@@ -57,20 +57,20 @@ export default function AsignacionDetailPage() {
         anio: anioSeleccionado,
         mes,
         datos: {
-          montoTotal: parseFloat(formData.montoTotal),
-          horasExtras: formData.horasExtras ? parseFloat(formData.horasExtras) : undefined,
-          bonificaciones: formData.bonificaciones ? parseFloat(formData.bonificaciones) : undefined,
-          descuentos: formData.descuentos ? parseFloat(formData.descuentos) : undefined,
+          presupuestado: parseFloat(formData.presupuestado),
+          devengado: parseFloat(formData.devengado),
+          aportesPatronales: formData.aportesPatronales ? parseFloat(formData.aportesPatronales) : undefined,
+          aportesPersonales: formData.aportesPersonales ? parseFloat(formData.aportesPersonales) : undefined,
           observaciones: formData.observaciones || undefined,
         },
       });
       
       // Limpiar formulario
       setFormData({
-        montoTotal: '',
-        horasExtras: '',
-        bonificaciones: '',
-        descuentos: '',
+        presupuestado: '',
+        devengado: '',
+        aportesPatronales: '',
+        aportesPersonales: '',
         observaciones: '',
       });
       setMesSeleccionado(null);
@@ -150,19 +150,29 @@ export default function AsignacionDetailPage() {
                   {asignacion.lineaPresupuestaria?.codigoLinea || '-'}
                 </p>
               </div>
-              <div className="col-md-3">
-                <strong>Monto Base:</strong>
+              <div className="col-md-2">
+                <strong>Objeto Gasto:</strong>
                 <p className="mb-0">
-                  {new Intl.NumberFormat('es-PY', {
-                    style: 'currency',
-                    currency: 'PYG',
-                  }).format(asignacion.montoBase)}
+                  {asignacion.objetoGasto || '-'}
                 </p>
               </div>
-              <div className="col-md-3">
-                <strong>Fecha Inicio:</strong>
+              <div className="col-md-2">
+                <strong>Salario Base:</strong>
                 <p className="mb-0">
-                  {new Date(asignacion.fechaInicio).toLocaleDateString('es-ES')}
+                  {asignacion.salarioBase != null
+                    ? new Intl.NumberFormat('es-PY', {
+                        style: 'currency',
+                        currency: 'PYG',
+                      }).format(asignacion.salarioBase)
+                    : '-'}
+                </p>
+              </div>
+              <div className="col-md-2">
+                <strong>Fecha Creación:</strong>
+                <p className="mb-0">
+                  {asignacion.fechaCreacion
+                    ? new Date(asignacion.fechaCreacion).toLocaleDateString('es-ES')
+                    : '-'}
                 </p>
               </div>
             </div>
@@ -260,10 +270,10 @@ export default function AsignacionDetailPage() {
               <thead className="table-light">
                 <tr>
                   <th className="text-nowrap">Mes</th>
-                  <th className="text-nowrap">Monto Total</th>
-                  <th className="text-nowrap d-none d-md-table-cell">Horas Extras</th>
-                  <th className="text-nowrap d-none d-lg-table-cell">Bonificaciones</th>
-                  <th className="text-nowrap d-none d-lg-table-cell">Descuentos</th>
+                  <th className="text-nowrap">Presupuestado</th>
+                  <th className="text-nowrap d-none d-md-table-cell">Devengado</th>
+                  <th className="text-nowrap d-none d-lg-table-cell">Aporte Jubilatorio</th>
+                  <th className="text-nowrap d-none d-lg-table-cell">Aporte Personal</th>
                   <th className="text-nowrap d-none d-xl-table-cell">Observaciones</th>
                   <th className="text-end text-nowrap">Acciones</th>
                 </tr>
@@ -284,26 +294,31 @@ export default function AsignacionDetailPage() {
                             {new Intl.NumberFormat('es-PY', {
                               style: 'currency',
                               currency: 'PYG',
-                            }).format(datosMes.montoTotal)}
+                            }).format(datosMes.presupuestado)}
                           </td>
-                          <td>{datosMes.horasExtras || '-'}</td>
-                          <td>
-                            {datosMes.bonificaciones
+                          <td className="d-none d-md-table-cell">
+                            {new Intl.NumberFormat('es-PY', {
+                              style: 'currency',
+                              currency: 'PYG',
+                            }).format(datosMes.devengado)}
+                          </td>
+                          <td className="d-none d-lg-table-cell">
+                            {datosMes.aportesPatronales
                               ? new Intl.NumberFormat('es-PY', {
                                   style: 'currency',
                                   currency: 'PYG',
-                                }).format(datosMes.bonificaciones)
+                                }).format(datosMes.aportesPatronales)
                               : '-'}
                           </td>
-                          <td>
-                            {datosMes.descuentos
+                          <td className="d-none d-lg-table-cell">
+                            {datosMes.aportesPersonales
                               ? new Intl.NumberFormat('es-PY', {
                                   style: 'currency',
                                   currency: 'PYG',
-                                }).format(datosMes.descuentos)
+                                }).format(datosMes.aportesPersonales)
                               : '-'}
                           </td>
-                          <td>
+                          <td className="d-none d-xl-table-cell">
                             <small>{datosMes.observaciones || '-'}</small>
                           </td>
                           <td className="text-end">
@@ -321,47 +336,47 @@ export default function AsignacionDetailPage() {
                             <input
                               type="number"
                               className="form-control form-control-sm"
-                              placeholder="Monto"
-                              value={formData.montoTotal}
+                              placeholder="Presupuestado"
+                              value={formData.presupuestado}
                               onChange={(e) =>
-                                setFormData({ ...formData, montoTotal: e.target.value })
+                                setFormData({ ...formData, presupuestado: e.target.value })
                               }
                             />
                           </td>
-                          <td>
+                          <td className="d-none d-md-table-cell">
                             <input
                               type="number"
                               className="form-control form-control-sm"
-                              placeholder="Horas"
-                              value={formData.horasExtras}
+                              placeholder="Devengado"
+                              value={formData.devengado}
                               onChange={(e) =>
-                                setFormData({ ...formData, horasExtras: e.target.value })
+                                setFormData({ ...formData, devengado: e.target.value })
                               }
                             />
                           </td>
-                          <td>
+                          <td className="d-none d-lg-table-cell">
                             <input
                               type="number"
                               className="form-control form-control-sm"
-                              placeholder="Bonif."
-                              value={formData.bonificaciones}
+                              placeholder="Ap. Jub."
+                              value={formData.aportesPatronales}
                               onChange={(e) =>
-                                setFormData({ ...formData, bonificaciones: e.target.value })
+                                setFormData({ ...formData, aportesPatronales: e.target.value })
                               }
                             />
                           </td>
-                          <td>
+                          <td className="d-none d-lg-table-cell">
                             <input
                               type="number"
                               className="form-control form-control-sm"
-                              placeholder="Desc."
-                              value={formData.descuentos}
+                              placeholder="Ap. Pers."
+                              value={formData.aportesPersonales}
                               onChange={(e) =>
-                                setFormData({ ...formData, descuentos: e.target.value })
+                                setFormData({ ...formData, aportesPersonales: e.target.value })
                               }
                             />
                           </td>
-                          <td>
+                          <td className="d-none d-xl-table-cell">
                             <input
                               type="text"
                               className="form-control form-control-sm"

@@ -1,13 +1,18 @@
-import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import Layout from '../components/Layout';
 import { useAsignaciones } from '../hooks/useAsignacionesPresupuestarias';
 
 export default function AsignacionesListPage() {
-  const [page, setPage] = useState(1);
-  const limit = 10;
+  const { data, isLoading, error } = useAsignaciones();
 
-  const { data, isLoading, error } = useAsignaciones({ page, limit });
+  // Debug logs
+  console.log('AsignacionesListPage - data:', data);
+  console.log('AsignacionesListPage - isLoading:', isLoading);
+  console.log('AsignacionesListPage - error:', error);
+  if (data && data.length > 0) {
+    console.log('AsignacionesListPage - primer objeto completo:', data[0]);
+  }
+  //console.table("Detail", data?.data || []);
 
   return (
     <Layout>
@@ -36,7 +41,7 @@ export default function AsignacionesListPage() {
             </div>
           ) : error ? (
             <div className="alert alert-danger">
-              Error al cargar asignaciones: {(error as any).message}
+              Error al cargar asignaciones: {error.message || 'Error desconocido'}
             </div>
           ) : (
             <>
@@ -44,64 +49,68 @@ export default function AsignacionesListPage() {
                 <table className="table table-hover">
                   <thead>
                     <tr>
-                      <th>Nombramiento</th>
+                      <th>Código</th>
+                      <th>Descripción</th>
                       <th>Categoría</th>
                       <th>Línea</th>
-                      <th>Monto Base</th>
-                      <th>Fecha Inicio</th>
+                      <th>Salario Base</th>
                       <th>Estado</th>
+                      <th>Personas Asignadas</th>
                       <th className="text-end">Acciones</th>
                     </tr>
                   </thead>
                   <tbody>
-                    {data?.data?.data?.length === 0 ? (
+                    {!data || data.length === 0 ? (
                       <tr>
-                        <td colSpan={7} className="text-center text-muted py-4">
+                        <td colSpan={8} className="text-center text-muted py-4">
                           No se encontraron asignaciones presupuestarias
                         </td>
                       </tr>
                     ) : (
-                      data?.data?.data?.map((asignacion: any) => (
+                      data.map((asignacion) => (
                         <tr key={asignacion.id}>
                           <td>
-                            {asignacion.nombramiento?.cargo?.nombre || '-'}
+                            <code className="text-primary">{asignacion.codigo || '-'}</code>
                           </td>
                           <td>
-                            {asignacion.categoriaPresupuestaria?.codigoCategoria || '-'}
+                            {asignacion.descripcion || '-'}
+                          </td>
+                          <td>
+                            <span className="badge bg-secondary">
+                              {asignacion.categoriaPresupuestaria?.codigoCategoria || '-'}
+                            </span>
                           </td>
                           <td>
                             {asignacion.lineaPresupuestaria?.codigoLinea || '-'}
                           </td>
                           <td>
                             <strong>
-                              {new Intl.NumberFormat('es-PY', {
-                                style: 'currency',
-                                currency: 'PYG',
-                              }).format(asignacion.montoBase)}
+                              {asignacion.salarioBase != null
+                                ? new Intl.NumberFormat('es-PY', {
+                                    style: 'currency',
+                                    currency: 'PYG',
+                                  }).format(Number(asignacion.salarioBase))
+                                : '-'}
                             </strong>
                           </td>
                           <td>
-                            {new Date(asignacion.fechaInicio).toLocaleDateString('es-ES')}
+                            <span className={`badge ${asignacion.vigente ? 'bg-success' : 'bg-secondary'}`}>
+                              {asignacion.vigente ? 'Vigente' : 'No Vigente'}
+                            </span>
                           </td>
-                          <td>
-                            <span
-                              className={`badge ${
-                                asignacion.fechaFin
-                                  ? 'bg-secondary'
-                                  : 'bg-success'
-                              }`}
-                            >
-                              {asignacion.fechaFin ? 'Finalizada' : 'Vigente'}
+                          <td className="text-center">
+                            <span className="badge bg-info">
+                              {asignacion._count?.asignacionesNombramientos || 0} persona(s)
                             </span>
                           </td>
                           <td className="text-end">
                             <div className="btn-group btn-group-sm">
                               <Link
-                                to={`/asignaciones/${asignacion.id}`}
-                                className="btn btn-outline-primary"
-                                title="Ver histórico mensual"
+                                to={`/asignaciones/${asignacion.id}/editar`}
+                                className="btn btn-outline-secondary"
+                                title="Editar asignación"
                               >
-                                <i className="bi bi-calendar3"></i>
+                                <i className="bi bi-pencil"></i>
                               </Link>
                               <Link
                                 to={`/asignaciones/${asignacion.id}/auditoria`}
@@ -118,41 +127,6 @@ export default function AsignacionesListPage() {
                   </tbody>
                 </table>
               </div>
-
-              {/* Paginación */}
-              {data?.data?.pagination && (
-                <div className="d-flex justify-content-between align-items-center mt-3">
-                  <div className="text-muted">
-                    Mostrando {data.data.pagination.page} de {data.data.pagination.totalPages} páginas
-                    ({data.data.pagination.total} registros totales)
-                  </div>
-                  <nav>
-                    <ul className="pagination mb-0">
-                      <li className={`page-item ${data.data.pagination.page === 1 ? 'disabled' : ''}`}>
-                        <button
-                          className="page-link"
-                          onClick={() => setPage(page - 1)}
-                          disabled={data.data.pagination.page === 1}
-                        >
-                          Anterior
-                        </button>
-                      </li>
-                      <li className="page-item active">
-                        <span className="page-link">{data.data.pagination.page}</span>
-                      </li>
-                      <li className={`page-item ${data.data.pagination.page >= data.data.pagination.totalPages ? 'disabled' : ''}`}>
-                        <button
-                          className="page-link"
-                          onClick={() => setPage(page + 1)}
-                          disabled={data.data.pagination.page >= data.data.pagination.totalPages}
-                        >
-                          Siguiente
-                        </button>
-                      </li>
-                    </ul>
-                  </nav>
-                </div>
-              )}
             </>
           )}
         </div>

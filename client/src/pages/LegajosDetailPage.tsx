@@ -1,12 +1,44 @@
 import { useParams, Link } from 'react-router-dom';
+import { useMemo } from 'react';
 import Layout from '../components/Layout';
 import { useLegajo } from '../hooks/useLegajos';
+import HistoricoAsignacionesCard from '../components/HistoricoAsignacionesCard';
+
+interface Nombramiento {
+  id: string;
+  estadoNombramiento: string;
+  cargo?: { nombreCargo: string };
+  tipoNombramiento: string;
+  categoria: string;
+  fechaInicio: string;
+  fechaFin?: string;
+  salarioBase: number;
+  asignacionPresupuestaria?: {
+    id: string;
+  };
+}
+
 
 export default function LegajosDetailPage() {
   const { id } = useParams<{ id: string }>();
-  const { data, isLoading, error } = useLegajo(id!);
+  const { data: legajo, isLoading, error } = useLegajo(id!);
 
-  const legajo = data?.data;
+  // Obtener el nombramiento vigente
+  const nombramientoVigente = useMemo(() => {
+    if (!legajo?.nombramientos) return null;
+    return legajo.nombramientos.find((n: Nombramiento) => n.estadoNombramiento === 'VIGENTE');
+  }, [legajo]);
+
+  // Verificar si tenemos un ID válido
+  if (!id) {
+    return (
+      <Layout>
+        <div className="alert alert-danger">
+          ID de legajo no proporcionado
+        </div>
+      </Layout>
+    );
+  }
 
   return (
     <Layout>
@@ -36,10 +68,37 @@ export default function LegajosDetailPage() {
           <div className="spinner-border text-primary" role="status">
             <span className="visually-hidden">Cargando...</span>
           </div>
+          <p className="mt-3 text-muted">Cargando información del legajo...</p>
         </div>
       ) : error ? (
         <div className="alert alert-danger">
-          Error al cargar legajo: {(error as any).message}
+          <h5 className="alert-heading">
+            <i className="bi bi-exclamation-triangle me-2"></i>
+            Error al cargar legajo
+          </h5>
+          <p className="mb-0">
+            {error instanceof Error ? error.message : 'No se pudo cargar la información del legajo. Por favor, intente nuevamente.'}
+          </p>
+          <hr />
+          <Link to="/legajos" className="btn btn-sm btn-outline-danger">
+            <i className="bi bi-arrow-left me-2"></i>
+            Volver a la lista
+          </Link>
+        </div>
+      ) : !legajo ? (
+        <div className="alert alert-warning">
+          <h5 className="alert-heading">
+            <i className="bi bi-info-circle me-2"></i>
+            Legajo no encontrado
+          </h5>
+          <p className="mb-0">
+            No se encontró información para el legajo solicitado.
+          </p>
+          <hr />
+          <Link to="/legajos" className="btn btn-sm btn-outline-warning">
+            <i className="bi bi-arrow-left me-2"></i>
+            Volver a la lista
+          </Link>
         </div>
       ) : legajo ? (
         <div className="row">
@@ -82,7 +141,10 @@ export default function LegajosDetailPage() {
                   <div className="col-md-6">
                     <label className="text-muted small">Fecha de Apertura</label>
                     <p className="fw-bold">
-                      {new Date(legajo.fechaApertura).toLocaleDateString('es-ES')}
+                      {legajo.fechaApertura 
+                        ? new Date(legajo.fechaApertura).toLocaleDateString('es-ES')
+                        : '-'
+                      }
                     </p>
                   </div>
                   {legajo.facultad && (
@@ -144,67 +206,74 @@ export default function LegajosDetailPage() {
             )}
 
             {legajo.nombramientos && legajo.nombramientos.length > 0 && (
-              <div className="card">
-                <div className="card-header bg-warning">
-                  <h5 className="mb-0">
-                    <i className="bi bi-briefcase me-2"></i>
-                    Nombramientos ({legajo.nombramientos.length})
-                  </h5>
-                </div>
-                <div className="card-body">
-                  <div className="table-responsive">
-                    <table className="table table-hover">
-                      <thead>
-                        <tr>
-                          <th>Cargo</th>
-                          <th>Categoría</th>
-                          <th>Fecha Inicio</th>
-                          <th>Fecha Fin</th>
-                          <th>Estado</th>
-                          <th>Salario Base</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {legajo.nombramientos.map((nom: any) => (
-                          <tr key={nom.id}>
-                            <td>{nom.cargo?.nombreCargo || nom.tipoNombramiento}</td>
-                            <td>
-                              <span className="badge bg-secondary">{nom.categoria}</span>
-                            </td>
-                            <td>
-                              {new Date(nom.fechaInicio).toLocaleDateString('es-ES')}
-                            </td>
-                            <td>
-                              {nom.fechaFin
-                                ? new Date(nom.fechaFin).toLocaleDateString('es-ES')
-                                : 'Vigente'}
-                            </td>
-                            <td>
-                              <span
-                                className={`badge ${
-                                  nom.estadoNombramiento === 'VIGENTE'
-                                    ? 'bg-success'
-                                    : nom.estadoNombramiento === 'FINALIZADO'
-                                    ? 'bg-secondary'
-                                    : 'bg-warning'
-                                }`}
-                              >
-                                {nom.estadoNombramiento}
-                              </span>
-                            </td>
-                            <td>
-                              {new Intl.NumberFormat('es-PY', {
-                                style: 'currency',
-                                currency: 'PYG',
-                              }).format(nom.salarioBase)}
-                            </td>
+              <>
+                <div className="card mb-4">
+                  <div className="card-header bg-warning">
+                    <h5 className="mb-0">
+                      <i className="bi bi-briefcase me-2"></i>
+                      Nombramientos ({legajo.nombramientos.length})
+                    </h5>
+                  </div>
+                  <div className="card-body">
+                    <div className="table-responsive">
+                      <table className="table table-hover">
+                        <thead>
+                          <tr>
+                            <th>Cargo</th>
+                            <th>Categoría</th>
+                            <th>Fecha Inicio</th>
+                            <th>Fecha Fin</th>
+                            <th>Estado</th>
+                            <th>Salario Base</th>
                           </tr>
-                        ))}
-                      </tbody>
-                    </table>
+                        </thead>
+                        <tbody>
+                          {legajo.nombramientos.map((nom: Nombramiento) => (
+                            <tr key={nom.id}>
+                              <td>{nom.cargo?.nombreCargo || nom.tipoNombramiento}</td>
+                              <td>
+                                <span className="badge bg-secondary">{nom.categoria}</span>
+                              </td>
+                              <td>
+                                {new Date(nom.fechaInicio).toLocaleDateString('es-ES')}
+                              </td>
+                              <td>
+                                {nom.fechaFin
+                                  ? new Date(nom.fechaFin).toLocaleDateString('es-ES')
+                                  : 'Vigente'}
+                              </td>
+                              <td>
+                                <span
+                                  className={`badge ${
+                                    nom.estadoNombramiento === 'VIGENTE'
+                                      ? 'bg-success'
+                                      : nom.estadoNombramiento === 'FINALIZADO'
+                                      ? 'bg-secondary'
+                                      : 'bg-warning'
+                                  }`}
+                                >
+                                  {nom.estadoNombramiento}
+                                </span>
+                              </td>
+                              <td>
+                                {new Intl.NumberFormat('es-PY', {
+                                  style: 'currency',
+                                  currency: 'PYG',
+                                }).format(nom.salarioBase)}
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
                   </div>
                 </div>
-              </div>
+
+                {/* Histórico de Asignaciones Presupuestarias */}
+                {nombramientoVigente && (
+                  <HistoricoAsignacionesCard nombramientoId={nombramientoVigente.id} />
+                )}
+              </>
             )}
           </div>
 
@@ -220,13 +289,19 @@ export default function LegajosDetailPage() {
                 <div className="mb-3">
                   <label className="text-muted small">Creado</label>
                   <p className="mb-0">
-                    {new Date(legajo.createdAt).toLocaleString('es-ES')}
+                    {legajo.createdAt 
+                      ? new Date(legajo.createdAt).toLocaleString('es-ES')
+                      : '-'
+                    }
                   </p>
                 </div>
                 <div>
                   <label className="text-muted small">Última Modificación</label>
                   <p className="mb-0">
-                    {new Date(legajo.updatedAt).toLocaleString('es-ES')}
+                    {legajo.updatedAt 
+                      ? new Date(legajo.updatedAt).toLocaleString('es-ES')
+                      : '-'
+                    }
                   </p>
                 </div>
               </div>
@@ -258,9 +333,7 @@ export default function LegajosDetailPage() {
             )}
           </div>
         </div>
-      ) : (
-        <div className="alert alert-warning">Legajo no encontrado</div>
-      )}
+      ) : null}
     </Layout>
   );
 }

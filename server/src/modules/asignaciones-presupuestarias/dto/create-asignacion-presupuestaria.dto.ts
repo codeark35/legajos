@@ -4,6 +4,7 @@ import {
   IsUUID,
   IsNumber,
   IsOptional,
+  IsBoolean,
   Min,
   Matches,
 } from 'class-validator';
@@ -11,12 +12,22 @@ import { ApiProperty } from '@nestjs/swagger';
 
 export class CreateAsignacionPresupuestariaDto {
   @ApiProperty({
-    description: 'ID del nombramiento',
-    example: '550e8400-e29b-41d4-a716-446655440000',
+    description: 'Código único de la asignación presupuestaria',
+    example: 'CAT-L33-001',
+    required: false,
   })
-  @IsUUID()
-  @IsNotEmpty()
-  nombramientoId: string;
+  @IsOptional()
+  @IsString()
+  codigo?: string;
+
+  @ApiProperty({
+    description: 'Descripción de la asignación presupuestaria',
+    example: 'Docente Técnico - Categoría L33 - Línea 100',
+    required: false,
+  })
+  @IsOptional()
+  @IsString()
+  descripcion?: string;
 
   @ApiProperty({
     description: 'ID de la categoría presupuestaria',
@@ -63,4 +74,13 @@ export class CreateAsignacionPresupuestariaDto {
   @IsOptional()
   @Matches(/^(PYG|USD|EUR)$/)
   moneda?: string;
+
+  @ApiProperty({
+    description: 'Si la asignación está vigente',
+    example: true,
+    default: true,
+  })
+  @IsOptional()
+  @IsBoolean()
+  vigente?: boolean;
 }

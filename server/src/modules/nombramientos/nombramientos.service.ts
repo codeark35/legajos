@@ -143,6 +143,37 @@ export class NombramientosService {
     };
   }
 
+  async findSinAsignacion() {
+    const nombramientos = await this.prisma.nombramiento.findMany({
+      where: {
+      },
+      orderBy: { fechaInicio: 'desc' },
+      include: {
+        legajo: {
+          include: {
+            persona: {
+              select: {
+                id: true,
+                nombres: true,
+                apellidos: true,
+                numeroCedula: true,
+              },
+            },
+            facultad: {
+              select: {
+                id: true,
+                nombreFacultad: true,
+              },
+            },
+          },
+        },
+        cargo: true,
+      },
+    });
+
+    return nombramientos;
+  }
+
   async findOne(id: string) {
     const nombramiento = await this.prisma.nombramiento.findUnique({
       where: { id },
@@ -154,10 +185,14 @@ export class NombramientosService {
           },
         },
         cargo: true,
-        asignacionPresupuestaria: {
+        asignaciones: {
           include: {
-            categoriaPresupuestaria: true,
-            lineaPresupuestaria: true,
+            asignacionPresupuestaria: {
+              include: {
+                categoriaPresupuestaria: true,
+                lineaPresupuestaria: true,
+              },
+            },
           },
         },
       },
@@ -258,4 +293,75 @@ export class NombramientosService {
       where: { id },
     });
   }
+
+  async obtenerHistoricoAsignaciones(nombramientoId: string) {
+    // Verificar que el nombramiento existe
+    await this.findOne(nombramientoId);
+
+    const asignaciones = await this.prisma.nombramientoAsignacion.findMany({
+      where: { nombramientoId },
+      include: {
+        asignacionPresupuestaria: {
+          include: {
+            categoriaPresupuestaria: true,
+            lineaPresupuestaria: true,
+          },
+        },
+      },
+      orderBy: { fechaInicio: 'asc' },
+    });
+
+    // Agrupar períodos consecutivos con la misma asignación
+    const periodos = [];
+    let periodoActual = null;
+
+    for (const asig of asignaciones) {
+      if (
+        !periodoActual ||
+        periodoActual.asignacionId !== asig.asignacionPresupuestariaId
+      ) {
+        // Guardar período anterior si existe
+        if (periodoActual) periodos.push(periodoActual);
+
+        // Iniciar nuevo período
+        periodoActual = {
+          asignacionId: asig.asignacionPresupuestariaId,
+          codigo: asig.asignacionPresupuestaria.codigo,
+          descripcion: asig.asignacionPresupuestaria.descripcion,
+          categoria: asig.asignacionPresupuestaria.categoriaPresupuestaria
+            ?.codigoCategoria,
+          categoriaDescripcion: asig.asignacionPresupuestaria
+            .categoriaPresupuestaria?.descripcion,
+          linea: asig.asignacionPresupuestaria.lineaPresupuestaria?.codigoLinea,
+          lineaDescripcion: asig.asignacionPresupuestaria.lineaPresupuestaria
+            ?.descripcion,
+          fechaInicio: asig.fechaInicio,
+          fechaFin: asig.fechaFin,
+          salarioBase: asig.asignacionPresupuestaria.salarioBase,
+          moneda: asig.asignacionPresupuestaria.moneda,
+          historicoMensual: asig.historicoMensual,
+        };
+      } else {
+        // Extender período actual
+        periodoActual.fechaFin = asig.fechaFin;
+        // Combinar históricos mensuales
+        const historicoActual = periodoActual.historicoMensual as any;
+        const historicoNuevo = asig.historicoMensual as any;
+        periodoActual.historicoMensual = {
+          ...historicoActual,
+          ...historicoNuevo,
+        };
+      }
+    }
+
+    // Agregar último período
+    if (periodoActual) periodos.push(periodoActual);
+
+    return {
+      nombramientoId,
+      periodos,
+      totalPeriodos: periodos.length,
+    };
+  }
 }
+

@@ -5,17 +5,29 @@ interface Legajo {
   id: string;
   numeroLegajo: string;
   personaId: string;
-  fechaIngreso: string;
-  estadoActual: string;
+  facultadId: string;
+  fechaApertura: string;
+  estadoLegajo: string;
+  tipoLegajo: string;
   observaciones?: string;
   persona?: any;
+  facultad?: any;
+  nombramientos?: any[];
+  createdAt: string;
+  updatedAt: string;
+  _count?: {
+    nombramientos: number;
+    documentos: number;
+  };
 }
 
 interface CreateLegajoDto {
   numeroLegajo: string;
   personaId: string;
-  fechaIngreso: string;
-  estadoActual?: string;
+  facultadId: string;
+  fechaApertura?: string;
+  estadoLegajo?: string;
+  tipoLegajo?: string;
   observaciones?: string;
 }
 
@@ -25,16 +37,16 @@ const legajosService = {
     return data;
   },
   getById: async (id: string) => {
-    const { data } = await apiService.get<Legajo>(`/legajos/${id}`);
-    return data;
+    const response = await apiService.get<{ success: boolean; data: Legajo }>(`/legajos/${id}`);
+    return response.data.data; // Extraer data.data porque el backend devuelve { success: true, data: {...} }
   },
   create: async (legajo: CreateLegajoDto) => {
-    const { data } = await apiService.post<Legajo>('/legajos', legajo);
-    return data;
+    const response = await apiService.post<{ success: boolean; data: Legajo }>('/legajos', legajo);
+    return response.data.data;
   },
   update: async (id: string, legajo: Partial<CreateLegajoDto>) => {
-    const { data } = await apiService.patch<Legajo>(`/legajos/${id}`, legajo);
-    return data;
+    const response = await apiService.patch<{ success: boolean; data: Legajo }>(`/legajos/${id}`, legajo);
+    return response.data.data;
   },
   delete: async (id: string) => {
     await apiService.delete(`/legajos/${id}`);

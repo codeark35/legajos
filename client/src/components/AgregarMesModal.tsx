@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useToast } from './ToastContainer';
+import { formatGuaranieInput, parseGuaranieInput } from '../utils/formatters';
 
 interface AgregarMesModalProps {
   isOpen: boolean;
@@ -67,10 +68,10 @@ export default function AgregarMesModal({
       setFormData({
         anio: datosIniciales.anio,
         mes: datosIniciales.mes,
-        presupuestado: datosIniciales.datos.presupuestado.toString(),
-        devengado: datosIniciales.datos.devengado.toString(),
-        aportesPatronales: datosIniciales.datos.aportesPatronales?.toString() || '',
-        aportesPersonales: datosIniciales.datos.aportesPersonales?.toString() || '',
+        presupuestado: formatGuaranieInput(datosIniciales.datos.presupuestado),
+        devengado: formatGuaranieInput(datosIniciales.datos.devengado),
+        aportesPatronales: datosIniciales.datos.aportesPatronales ? formatGuaranieInput(datosIniciales.datos.aportesPatronales) : '',
+        aportesPersonales: datosIniciales.datos.aportesPersonales ? formatGuaranieInput(datosIniciales.datos.aportesPersonales) : '',
         observaciones: datosIniciales.datos.observaciones || '',
       });
     } else {
@@ -91,19 +92,24 @@ export default function AgregarMesModal({
   const validate = () => {
     const newErrors: Record<string, string> = {};
 
-    if (!formData.presupuestado || parseFloat(formData.presupuestado) <= 0) {
+    const presupuestadoNum = parseGuaranieInput(formData.presupuestado);
+    const devengadoNum = parseGuaranieInput(formData.devengado);
+    const aportesPatronalesNum = formData.aportesPatronales ? parseGuaranieInput(formData.aportesPatronales) : 0;
+    const aportesPersonalesNum = formData.aportesPersonales ? parseGuaranieInput(formData.aportesPersonales) : 0;
+
+    if (!formData.presupuestado || presupuestadoNum <= 0) {
       newErrors.presupuestado = 'Debe ingresar un monto presupuestado válido';
     }
 
-    if (!formData.devengado || parseFloat(formData.devengado) <= 0) {
+    if (!formData.devengado || devengadoNum <= 0) {
       newErrors.devengado = 'Debe ingresar un monto devengado válido';
     }
 
-    if (formData.aportesPatronales && parseFloat(formData.aportesPatronales) < 0) {
+    if (formData.aportesPatronales && aportesPatronalesNum < 0) {
       newErrors.aportesPatronales = 'El monto no puede ser negativo';
     }
 
-    if (formData.aportesPersonales && parseFloat(formData.aportesPersonales) < 0) {
+    if (formData.aportesPersonales && aportesPersonalesNum < 0) {
       newErrors.aportesPersonales = 'El monto no puede ser negativo';
     }
 
@@ -122,13 +128,13 @@ export default function AgregarMesModal({
     setIsSubmitting(true);
     try {
       const datos: DatosMes = {
-        presupuestado: parseFloat(formData.presupuestado),
-        devengado: parseFloat(formData.devengado),
+        presupuestado: parseGuaranieInput(formData.presupuestado),
+        devengado: parseGuaranieInput(formData.devengado),
         aportesPatronales: formData.aportesPatronales
-          ? parseFloat(formData.aportesPatronales)
+          ? parseGuaranieInput(formData.aportesPatronales)
           : undefined,
         aportesPersonales: formData.aportesPersonales
-          ? parseFloat(formData.aportesPersonales)
+          ? parseGuaranieInput(formData.aportesPersonales)
           : undefined,
         observaciones: formData.observaciones || undefined,
       };
@@ -144,7 +150,20 @@ export default function AgregarMesModal({
   };
 
   const handleChange = (field: string, value: string) => {
-    setFormData({ ...formData, [field]: value });
+    // Si es un campo de monto, formatear mientras escribe
+    if (['presupuestado', 'devengado', 'aportesPatronales', 'aportesPersonales'].includes(field)) {
+      // Permitir solo números
+      const cleaned = value.replace(/[^0-9]/g, '');
+      if (cleaned) {
+        const formatted = formatGuaranieInput(cleaned);
+        setFormData({ ...formData, [field]: formatted });
+      } else {
+        setFormData({ ...formData, [field]: '' });
+      }
+    } else {
+      setFormData({ ...formData, [field]: value });
+    }
+    
     // Limpiar error del campo al escribir
     if (errors[field]) {
       setErrors({ ...errors, [field]: '' });
@@ -239,15 +258,13 @@ export default function AgregarMesModal({
                     <div className="input-group">
                       <span className="input-group-text">₲</span>
                       <input
-                        type="number"
+                        type="text"
                         id="presupuestado"
                         className={`form-control ${errors.presupuestado ? 'is-invalid' : ''}`}
-                        placeholder="3021000"
+                        placeholder="3.021.000"
                         value={formData.presupuestado}
                         onChange={(e) => handleChange('presupuestado', e.target.value)}
                         disabled={isSubmitting}
-                        step="1"
-                        min="0"
                       />
                       {errors.presupuestado && (
                         <div className="invalid-feedback">{errors.presupuestado}</div>
@@ -263,15 +280,13 @@ export default function AgregarMesModal({
                     <div className="input-group">
                       <span className="input-group-text">₲</span>
                       <input
-                        type="number"
+                        type="text"
                         id="devengado"
                         className={`form-control ${errors.devengado ? 'is-invalid' : ''}`}
-                        placeholder="3021000"
+                        placeholder="3.021.000"
                         value={formData.devengado}
                         onChange={(e) => handleChange('devengado', e.target.value)}
                         disabled={isSubmitting}
-                        step="1"
-                        min="0"
                       />
                       {errors.devengado && (
                         <div className="invalid-feedback">{errors.devengado}</div>
@@ -279,23 +294,21 @@ export default function AgregarMesModal({
                     </div>
                   </div>
 
-                  {/* Aportes Patronales */}
+                  {/* Aporte Jubilatorio */}
                   <div className="col-md-6">
                     <label htmlFor="aportesPatronales" className="form-label">
-                      Aportes Patronales
+                      Aporte Jubilatorio
                     </label>
                     <div className="input-group">
                       <span className="input-group-text">₲</span>
                       <input
-                        type="number"
+                        type="text"
                         id="aportesPatronales"
                         className={`form-control ${errors.aportesPatronales ? 'is-invalid' : ''}`}
-                        placeholder="604200"
+                        placeholder="604.200"
                         value={formData.aportesPatronales}
                         onChange={(e) => handleChange('aportesPatronales', e.target.value)}
                         disabled={isSubmitting}
-                        step="1"
-                        min="0"
                       />
                       {errors.aportesPatronales && (
                         <div className="invalid-feedback">{errors.aportesPatronales}</div>
@@ -311,15 +324,13 @@ export default function AgregarMesModal({
                     <div className="input-group">
                       <span className="input-group-text">₲</span>
                       <input
-                        type="number"
+                        type="text"
                         id="aportesPersonales"
                         className={`form-control ${errors.aportesPersonales ? 'is-invalid' : ''}`}
                         placeholder="0"
                         value={formData.aportesPersonales}
                         onChange={(e) => handleChange('aportesPersonales', e.target.value)}
                         disabled={isSubmitting}
-                        step="1"
-                        min="0"
                       />
                       {errors.aportesPersonales && (
                         <div className="invalid-feedback">{errors.aportesPersonales}</div>

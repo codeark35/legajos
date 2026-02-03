@@ -50,6 +50,24 @@ export class NombramientosController {
     return this.nombramientosService.findAll(query);
   }
 
+  @Get('sin-asignacion')
+  @Roles('ADMIN', 'RECURSOS_HUMANOS', 'CONSULTA', 'USUARIO')
+  @ApiOperation({ summary: 'Listar nombramientos sin asignación presupuestaria' })
+  @ApiResponse({ status: 200, description: 'Lista de nombramientos sin asignación' })
+  findSinAsignacion() {
+    return this.nombramientosService.findSinAsignacion();
+  }
+
+  @Get(':id/asignaciones-historico')
+  @Roles('ADMIN', 'RECURSOS_HUMANOS', 'CONSULTA', 'USUARIO')
+  @ApiOperation({ summary: 'Obtener histórico de asignaciones de un nombramiento (períodos agrupados)' })
+  @ApiParam({ name: 'id', description: 'ID del nombramiento' })
+  @ApiResponse({ status: 200, description: 'Histórico de asignaciones agrupado' })
+  @ApiResponse({ status: 404, description: 'Nombramiento no encontrado' })
+  obtenerHistoricoAsignaciones(@Param('id') id: string) {
+    return this.nombramientosService.obtenerHistoricoAsignaciones(id);
+  }
+
   @Get(':id')
   @Roles('ADMIN', 'RECURSOS_HUMANOS', 'CONSULTA', 'USUARIO')
   @ApiOperation({ summary: 'Obtener nombramiento por ID' })
