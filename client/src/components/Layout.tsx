@@ -1,6 +1,6 @@
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
-
+import { Logo } from '../assets';
 interface LayoutProps {
   children: React.ReactNode;
 }
@@ -23,7 +23,8 @@ export default function Layout({ children }: LayoutProps) {
       <nav className="navbar navbar-expand-lg navbar-dark bg-primary shadow-sm">
         <div className="container-fluid">
           <Link className="navbar-brand fw-bold d-flex align-items-center" to="/dashboard">
-            <i className="bi bi-folder-fill me-2"></i>
+         
+            <img src={Logo} alt="Logo" style={{ height: '35px', marginRight: '8px' }} />
             <span className="d-none d-sm-inline">Sistema de Legajos</span>
             <span className="d-inline d-sm-none">Legajos</span>
           </Link>

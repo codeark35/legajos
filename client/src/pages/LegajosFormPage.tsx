@@ -4,6 +4,7 @@ import Layout from '../components/Layout';
 import { useToast } from '../components/ToastContainer';
 import { useLegajo, useCreateLegajo, useUpdateLegajo } from '../hooks/useLegajos';
 import { usePersonas } from '../hooks/usePersonas';
+import { useFacultades } from '../hooks/useFacultades';
 
 export default function LegajosFormPage() {
   const { id } = useParams<{ id: string }>();
@@ -13,6 +14,7 @@ export default function LegajosFormPage() {
 
   const { data } = useLegajo(id!, { enabled: isEditing });
   const { data: personasData } = usePersonas({ page: 1, limit: 100 });
+  const { data: facultadesData } = useFacultades({ activo: true, page: 1, limit: 100 });
   const createMutation = useCreateLegajo();
   const updateMutation = useUpdateLegajo();
 
@@ -25,7 +27,7 @@ export default function LegajosFormPage() {
     estadoLegajo: 'ACTIVO',
     observaciones: '',
   });
-
+  console.log('formData', facultadesData);
   const [errors, setErrors] = useState<any>({});
 
   useEffect(() => {
@@ -60,6 +62,7 @@ export default function LegajosFormPage() {
     if (!formData.numeroLegajo.trim())
       newErrors.numeroLegajo = 'Número de legajo es requerido';
     if (!formData.personaId) newErrors.personaId = 'Debe seleccionar una persona';
+    if (!formData.facultadId) newErrors.facultadId = 'Debe seleccionar una facultad';
     if (!formData.fechaApertura) newErrors.fechaApertura = 'Fecha de apertura es requerida';
     return newErrors;
   };
@@ -76,7 +79,6 @@ export default function LegajosFormPage() {
     try {
       const dataToSend = {
         ...formData,
-        facultadId: formData.facultadId || undefined,
       } as any;
 
       if (isEditing) {
@@ -179,6 +181,30 @@ export default function LegajosFormPage() {
                   </div>
 
                   <div className="col-md-6">
+                    <label htmlFor="facultadId" className="form-label">
+                      Facultad <span className="text-danger">*</span>
+                    </label>
+                    <select
+                      className={`form-select ${errors.facultadId ? 'is-invalid' : ''}`}
+                      id="facultadId"
+                      name="facultadId"
+                      value={formData.facultadId}
+                      onChange={handleChange}
+                      required
+                    >
+                      <option value="">Seleccione una facultad</option>
+                      {facultadesData?.map((facultad: any) => (
+                        <option key={facultad.id} value={facultad.id}>
+                          {facultad.nombreFacultad}
+                        </option>
+                      ))}
+                    </select>
+                    {errors.facultadId && (
+                      <div className="invalid-feedback">{errors.facultadId}</div>
+                    )}
+                  </div>
+
+                  <div className="col-md-6">
                     <label htmlFor="fechaApertura" className="form-label">
                       Fecha de Apertura <span className="text-danger">*</span>
                     </label>
@@ -268,8 +294,10 @@ export default function LegajosFormPage() {
               <ul className="small mb-0">
                 <li>El número de legajo debe ser único</li>
                 <li>Seleccione la persona a la que pertenece el legajo</li>
+                <li>La facultad es obligatoria y determina la unidad académica</li>
                 <li>El tipo de legajo define la clasificación del mismo</li>
                 <li>La fecha de apertura indica cuándo se creó el legajo</li>
+                <li>El estado por defecto es ACTIVO</li>
               </ul>
             </div>
           </div>

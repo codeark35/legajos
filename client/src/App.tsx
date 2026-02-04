@@ -13,6 +13,9 @@ import LegajosListPage from './pages/LegajosListPage';
 import LegajosDetailPage from './pages/LegajosDetailPage';
 import LegajosFormPage from './pages/LegajosFormPage';
 import GestionLegajosPage from './pages/GestionLegajosPage';
+import HistoricoMensualPage from './pages/HistoricoMensualPage';
+import NombramientoFormPage from './pages/NombramientoFormPage';
+import FinalizarNombramientoPage from './pages/FinalizarNombramientoPage';
 import LineasPresupuestariasPage from './pages/LineasPresupuestariasPage';
 import CategoriasPresupuestariasPage from './pages/CategoriasPresupuestariasPage';
 
@@ -138,6 +141,46 @@ function App() {
                 element={
                   <PrivateRoute>
                     <GestionLegajosPage />
+                  </PrivateRoute>
+                }
+              />
+
+              {/* Ruta: Histórico Mensual de Nombramiento */}
+              <Route
+                path="/nombramientos/:id/historico"
+                element={
+                  <PrivateRoute>
+                    <HistoricoMensualPage />
+                  </PrivateRoute>
+                }
+              />
+
+              {/* Ruta: Crear Nombramiento */}
+              <Route
+                path="/nombramientos/nuevo"
+                element={
+                  <PrivateRoute>
+                    <NombramientoFormPage />
+                  </PrivateRoute>
+                }
+              />
+
+              {/* Ruta: Editar Nombramiento */}
+              <Route
+                path="/nombramientos/:id/editar"
+                element={
+                  <PrivateRoute>
+                    <NombramientoFormPage />
+                  </PrivateRoute>
+                }
+              />
+
+              {/* Ruta: Finalizar Nombramiento */}
+              <Route
+                path="/nombramientos/:id/finalizar"
+                element={
+                  <PrivateRoute>
+                    <FinalizarNombramientoPage />
                   </PrivateRoute>
                 }
               />

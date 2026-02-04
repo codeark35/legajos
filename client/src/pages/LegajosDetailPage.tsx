@@ -1,25 +1,32 @@
-import { useParams, Link } from 'react-router-dom';
+import { useParams, Link, useNavigate } from 'react-router-dom';
 import Layout from '../components/Layout';
 import { useLegajo } from '../hooks/useLegajos';
 
 interface Nombramiento {
   id: string;
   estadoNombramiento: string;
-  cargo?: { nombreCargo: string };
-  tipoNombramiento: string;
-  categoria: string;
-  fechaInicio: string;
-  fechaFin?: string;
-  salarioBase: number;
-  asignacionPresupuestaria?: {
+  cargo?: { 
     id: string;
+    nombreCargo: string;
   };
+  tipoNombramiento: string;
+  categoria: string | null;
+  fechaInicio: string;
+  fechaFin?: string | null;
+  salarioBase: number | null;
+  vigente: boolean;
 }
 
 
 export default function LegajosDetailPage() {
   const { id } = useParams<{ id: string }>();
+  const navigate = useNavigate();
   const { data: legajo, isLoading, error } = useLegajo(id!);
+
+  const handleVerHistorico = (nombramientoId: string) => {
+    navigate(`/nombramientos/${nombramientoId}/historico`);
+  };
+
 
   // Verificar si tenemos un ID válido
   if (!id) {
@@ -197,14 +204,21 @@ export default function LegajosDetailPage() {
               </div>
             )}
 
-            {legajo.nombramientos && legajo.nombramientos.length > 0 && (
+            {legajo.nombramientos && legajo.nombramientos.length > 0 ? (
               <>
                 <div className="card mb-4">
-                  <div className="card-header bg-warning">
+                  <div className="card-header bg-warning d-flex justify-content-between align-items-center">
                     <h5 className="mb-0">
                       <i className="bi bi-briefcase me-2"></i>
                       Nombramientos ({legajo.nombramientos.length})
                     </h5>
+                    <button
+                      onClick={() => navigate(`/nombramientos/nuevo?legajoId=${legajo.id}`)}
+                      className="btn btn-sm btn-light"
+                    >
+                      <i className="bi bi-plus-circle me-2"></i>
+                      Agregar Nombramiento
+                    </button>
                   </div>
                   <div className="card-body">
                     <div className="table-responsive">
@@ -217,14 +231,32 @@ export default function LegajosDetailPage() {
                             <th>Fecha Fin</th>
                             <th>Estado</th>
                             <th>Salario Base</th>
+                            <th className="text-center">Acciones</th>
                           </tr>
                         </thead>
                         <tbody>
-                          {legajo.nombramientos.map((nom: Nombramiento) => (
+                          {legajo.nombramientos.map((nom: Nombramiento) => {
+                            // Calcular si está realmente vigente
+                            const ahora = new Date();
+                            const fechaInicio = new Date(nom.fechaInicio);
+                            const fechaFin = nom.fechaFin ? new Date(nom.fechaFin) : null;
+                            const esVigente = nom.vigente && 
+                                            fechaInicio <= ahora && 
+                                            (!fechaFin || fechaFin >= ahora);
+                            
+                            // Determinar estado real
+                            let estadoReal = nom.estadoNombramiento;
+                            if (!esVigente && fechaFin && fechaFin < ahora) {
+                              estadoReal = 'FINALIZADO';
+                            } else if (fechaInicio > ahora) {
+                              estadoReal = 'PENDIENTE';
+                            }
+                            
+                            return (
                             <tr key={nom.id}>
                               <td>{nom.cargo?.nombreCargo || nom.tipoNombramiento}</td>
                               <td>
-                                <span className="badge bg-secondary">{nom.categoria}</span>
+                                <span className="badge bg-secondary">{nom.categoria || '-'}</span>
                               </td>
                               <td>
                                 {new Date(nom.fechaInicio).toLocaleDateString('es-ES')}
@@ -237,30 +269,84 @@ export default function LegajosDetailPage() {
                               <td>
                                 <span
                                   className={`badge ${
-                                    nom.estadoNombramiento === 'VIGENTE'
+                                    esVigente
                                       ? 'bg-success'
-                                      : nom.estadoNombramiento === 'FINALIZADO'
+                                      : estadoReal === 'FINALIZADO'
                                       ? 'bg-secondary'
+                                      : estadoReal === 'PENDIENTE'
+                                      ? 'bg-info'
                                       : 'bg-warning'
                                   }`}
                                 >
-                                  {nom.estadoNombramiento}
+                                  {esVigente ? 'VIGENTE' : estadoReal || 'FINALIZADO'}
                                 </span>
                               </td>
                               <td>
-                                {new Intl.NumberFormat('es-PY', {
+                                {nom.salarioBase ? new Intl.NumberFormat('es-PY', {
                                   style: 'currency',
                                   currency: 'PYG',
-                                }).format(nom.salarioBase)}
+                                }).format(nom.salarioBase) : '-'}
+                              </td>
+                              <td>
+                                <div className="btn-group btn-group-sm" role="group">
+                                  <button
+                                    type="button"
+                                    className="btn btn-outline-primary"
+                                    onClick={() => handleVerHistorico(nom.id)}
+                                    title="Ver Histórico Mensual"
+                                  >
+                                    <i className="bi bi-calendar3"></i> Histórico
+                                  </button>
+                                  <button
+                                    type="button"
+                                    className="btn btn-outline-warning"
+                                    onClick={() => navigate(`/nombramientos/${nom.id}/editar`)}
+                                    title="Editar Nombramiento"
+                                  >
+                                    <i className="bi bi-pencil"></i>
+                                  </button>
+                                  {esVigente && (
+                                    <button
+                                      type="button"
+                                      className="btn btn-outline-danger"
+                                      onClick={() => navigate(`/nombramientos/${nom.id}/finalizar`)}
+                                      title="Finalizar Nombramiento"
+                                    >
+                                      <i className="bi bi-x-circle"></i>
+                                    </button>
+                                  )}
+                                </div>
                               </td>
                             </tr>
-                          ))}
+                          )})}
                         </tbody>
                       </table>
                     </div>
                   </div>
                 </div>
               </>
+            ) : (
+              <div className="card mb-4">
+                <div className="card-header bg-warning">
+                  <h5 className="mb-0">
+                    <i className="bi bi-briefcase me-2"></i>
+                    Nombramientos
+                  </h5>
+                </div>
+                <div className="card-body text-center py-5">
+                  <i className="bi bi-briefcase display-1 text-muted mb-3"></i>
+                  <p className="text-muted mb-3">
+                    No hay nombramientos registrados para este legajo.
+                  </p>
+                  <button
+                    onClick={() => navigate(`/nombramientos/nuevo?legajoId=${legajo.id}`)}
+                    className="btn btn-primary"
+                  >
+                    <i className="bi bi-plus-circle me-2"></i>
+                    Crear Primer Nombramiento
+                  </button>
+                </div>
+              </div>
             )}
           </div>
 

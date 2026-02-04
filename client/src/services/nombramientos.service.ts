@@ -3,19 +3,42 @@ import apiService from './api.service';
 export interface Nombramiento {
   id: string;
   legajoId: string;
-  cargoId: string;
+  cargoId: string | null;
+  tipoNombramiento: string;
+  categoria: string | null;
   fechaInicio: string;
-  fechaFin?: string;
-  estado: string;
+  fechaFin?: string | null;
+  resolucionNumero?: string | null;
+  resolucionFecha?: string | null;
+  resolucionId?: string | null;
+  salarioBase?: number | null;
+  moneda: string;
+  vigente: boolean;
+  estadoNombramiento: string;
+  observaciones?: string | null;
+  historicoMensual?: any;
+  createdAt: string;
+  updatedAt: string;
   legajo?: {
+    id: string;
+    numeroLegajo: string;
     persona: {
+      id: string;
       nombres: string;
       apellidos: string;
       numeroCedula: string;
     };
+    facultad?: {
+      id: string;
+      nombreFacultad: string;
+    };
   };
   cargo?: {
-    nombre: string;
+    id: string;
+    nombreCargo: string;
+    descripcion?: string;
+    nivel?: string;
+    salarioBase?: number;
   };
 }
 
@@ -82,10 +105,43 @@ interface LegajoConNombramientos {
   }>;
 }
 
+interface CreateNombramientoDto {
+  legajoId: string;
+  cargoId: string;
+  tipoNombramiento?: string;
+  categoria?: string;
+  salarioBase?: number;
+  fechaInicio: string;
+  fechaFin?: string;
+  vigente?: boolean;
+  observaciones?: string;
+}
+
+interface UpdateNombramientoDto extends Partial<CreateNombramientoDto> {}
+
 const nombramientosService = {
   getAll: async () => {
     const response = await apiService.get<{ success: boolean; data: { data: Nombramiento[]; pagination: any } }>('/nombramientos?limit=1000');
     return response.data.data.data || [];
+  },
+
+  getById: async (id: string) => {
+    const response = await apiService.get(`/nombramientos/${id}`);
+    return response.data.data;
+  },
+
+  create: async (dto: CreateNombramientoDto) => {
+    const response = await apiService.post('/nombramientos', dto);
+    return response.data.data;
+  },
+
+  update: async (id: string, dto: UpdateNombramientoDto) => {
+    const response = await apiService.patch(`/nombramientos/${id}`, dto);
+    return response.data.data;
+  },
+
+  delete: async (id: string) => {
+    await apiService.delete(`/nombramientos/${id}`);
   },
 
   getLegajosCompleto: async (): Promise<LegajoConNombramientos[]> => {
@@ -120,4 +176,4 @@ const nombramientosService = {
 };
 
 export default nombramientosService;
-export type { MesData, HistoricoMensual, AgregarMesDto, LegajoConNombramientos };
+export type { MesData, HistoricoMensual, AgregarMesDto, LegajoConNombramientos, CreateNombramientoDto, UpdateNombramientoDto };

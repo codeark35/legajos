@@ -1,16 +1,16 @@
-import { useState } from 'react';
-import { Link } from 'react-router-dom';
-import Layout from '../components/Layout';
-import LoadingSkeleton from '../components/LoadingSkeleton';
-import EmptyState from '../components/EmptyState';
-import ErrorAlert from '../components/ErrorAlert';
-import ConfirmModal from '../components/ConfirmModal';
-import { useToast } from '../components/ToastContainer';
-import { useDebounce } from '../hooks/useDebounce';
-import { useLegajos, useDeleteLegajo } from '../hooks/useLegajos';
+import { useState } from "react";
+import { Link } from "react-router-dom";
+import Layout from "../components/Layout";
+import LoadingSkeleton from "../components/LoadingSkeleton";
+import EmptyState from "../components/EmptyState";
+import ErrorAlert from "../components/ErrorAlert";
+import ConfirmModal from "../components/ConfirmModal";
+import { useToast } from "../components/ToastContainer";
+import { useDebounce } from "../hooks/useDebounce";
+import { useLegajos, useDeleteLegajo } from "../hooks/useLegajos";
 
 export default function LegajosListPage() {
-  const [search, setSearch] = useState('');
+  const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const limit = 10;
@@ -20,7 +20,11 @@ export default function LegajosListPage() {
   const debouncedSearch = useDebounce(search, 300);
   const isSearching = search !== debouncedSearch;
 
-  const { data, isLoading, error, refetch } = useLegajos({ search: debouncedSearch, page, limit });
+  const { data, isLoading, error, refetch } = useLegajos({
+    search: debouncedSearch,
+    page,
+    limit,
+  });
   const deleteMutation = useDeleteLegajo();
 
   const handleDeleteConfirm = async () => {
@@ -28,10 +32,10 @@ export default function LegajosListPage() {
 
     try {
       await deleteMutation.mutateAsync(deleteId);
-      toast.success('Legajo eliminado exitosamente');
+      toast.success("Legajo eliminado exitosamente");
       setDeleteId(null);
     } catch (err: any) {
-      toast.error(err.response?.data?.message || 'Error al eliminar legajo');
+      toast.error(err.response?.data?.message || "Error al eliminar legajo");
       setDeleteId(null);
     }
   };
@@ -68,7 +72,10 @@ export default function LegajosListPage() {
                 />
                 {isSearching && (
                   <div className="position-absolute top-50 end-0 translate-middle-y me-3">
-                    <div className="spinner-border spinner-border-sm text-primary" role="status">
+                    <div
+                      className="spinner-border spinner-border-sm text-primary"
+                      role="status"
+                    >
                       <span className="visually-hidden">Buscando...</span>
                     </div>
                   </div>
@@ -76,7 +83,9 @@ export default function LegajosListPage() {
               </div>
               {search && (
                 <small className="text-muted">
-                  {isSearching ? 'Buscando...' : `${data?.data?.pagination?.total || 0} resultados encontrados`}
+                  {isSearching
+                    ? "Buscando..."
+                    : `${data?.data?.pagination?.total || 0} resultados encontrados`}
                 </small>
               )}
             </div>
@@ -95,7 +104,11 @@ export default function LegajosListPage() {
             <EmptyState
               icon="bi-folder2-open"
               title="No hay legajos registrados"
-              description={search ? 'No se encontraron resultados para tu búsqueda' : 'Comienza agregando el primer legajo'}
+              description={
+                search
+                  ? "No se encontraron resultados para tu búsqueda"
+                  : "Comienza agregando el primer legajo"
+              }
               action={
                 !search && (
                   <Link to="/legajos/nuevo" className="btn btn-primary">
@@ -122,34 +135,48 @@ export default function LegajosListPage() {
                   <tbody>
                     {data?.data?.data?.map((legajo: any) => (
                       <tr key={legajo.id}>
+                          <td>
+                        <Link
+                          to={`/legajos/${legajo.id}`}
+                          className="text-decoration-none text-dark fw-normal"
+                        >
+                            <strong>{legajo.numeroLegajo}</strong>
+                        </Link>
+                          </td>
                         <td>
-                          <strong>{legajo.numeroLegajo}</strong>
-                        </td>
-                        <td>
+                          <Link
+                          to={`/legajos/${legajo.id}`}
+                          className="text-decoration-none text-dark fw-normal"
+                        >
+
                           {legajo.persona ? (
                             <>
-                              {legajo.persona.nombres} {legajo.persona.apellidos}
+                              {legajo.persona.nombres}{" "}
+                              {legajo.persona.apellidos}
                             </>
                           ) : (
                             <span className="text-muted">-</span>
                           )}
+                          </Link>
                         </td>
-                        <td>{legajo.persona?.numeroCedula || '-'}</td>
+                        <td>{legajo.persona?.numeroCedula || "-"}</td>
                         <td>
                           {legajo.fechaApertura
-                            ? new Date(legajo.fechaApertura).toLocaleDateString('es-ES')
-                            : '-'}
+                            ? new Date(legajo.fechaApertura).toLocaleDateString(
+                                "es-ES",
+                              )
+                            : "-"}
                         </td>
                         <td>
                           <span
                             className={`badge ${
-                              legajo.estadoLegajo === 'ACTIVO'
-                                ? 'bg-success'
-                                : legajo.estadoLegajo === 'CERRADO'
-                                ? 'bg-secondary'
-                                : legajo.estadoLegajo === 'SUSPENDIDO'
-                                ? 'bg-warning'
-                                : 'bg-info'
+                              legajo.estadoLegajo === "ACTIVO"
+                                ? "bg-success"
+                                : legajo.estadoLegajo === "CERRADO"
+                                  ? "bg-secondary"
+                                  : legajo.estadoLegajo === "SUSPENDIDO"
+                                    ? "bg-warning"
+                                    : "bg-info"
                             }`}
                           >
                             {legajo.estadoLegajo}
@@ -190,12 +217,15 @@ export default function LegajosListPage() {
               {data?.data?.pagination && (
                 <div className="d-flex justify-content-between align-items-center mt-3">
                   <div className="text-muted">
-                    Mostrando {data.data.pagination.page} de {data.data.pagination.totalPages} páginas
-                    ({data.data.pagination.total} registros totales)
+                    Mostrando {data.data.pagination.page} de{" "}
+                    {data.data.pagination.totalPages} páginas (
+                    {data.data.pagination.total} registros totales)
                   </div>
                   <nav>
                     <ul className="pagination mb-0">
-                      <li className={`page-item ${data.data.pagination.page === 1 ? 'disabled' : ''}`}>
+                      <li
+                        className={`page-item ${data.data.pagination.page === 1 ? "disabled" : ""}`}
+                      >
                         <button
                           className="page-link"
                           onClick={() => setPage(page - 1)}
@@ -205,13 +235,20 @@ export default function LegajosListPage() {
                         </button>
                       </li>
                       <li className="page-item active">
-                        <span className="page-link">{data.data.pagination.page}</span>
+                        <span className="page-link">
+                          {data.data.pagination.page}
+                        </span>
                       </li>
-                      <li className={`page-item ${data.data.pagination.page >= data.data.pagination.totalPages ? 'disabled' : ''}`}>
+                      <li
+                        className={`page-item ${data.data.pagination.page >= data.data.pagination.totalPages ? "disabled" : ""}`}
+                      >
                         <button
                           className="page-link"
                           onClick={() => setPage(page + 1)}
-                          disabled={data.data.pagination.page >= data.data.pagination.totalPages}
+                          disabled={
+                            data.data.pagination.page >=
+                            data.data.pagination.totalPages
+                          }
                         >
                           Siguiente
                         </button>

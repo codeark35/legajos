@@ -52,12 +52,13 @@ export default function HistoricoMensualTable({
   // Calcular totales
   const totales = mesesOrdenados.reduce(
     (acc, [_, mes]) => ({
+      objetoGasto: acc.objetoGasto + (mes.objetoGasto ? parseFloat(mes.objetoGasto) : 0),
       presupuestado: acc.presupuestado + (mes.presupuestado || 0),
       devengado: acc.devengado + (mes.devengado || 0),
       aporteJubilatorio: acc.aporteJubilatorio + (mes.aporteJubilatorio || 0),
       aportesPersonales: acc.aportesPersonales + (mes.aportesPersonales || 0),
     }),
-    { presupuestado: 0, devengado: 0, aporteJubilatorio: 0, aportesPersonales: 0 }
+    { objetoGasto: 0, presupuestado: 0, devengado: 0, aporteJubilatorio: 0, aportesPersonales: 0 }
   );
 
   const handleEliminarConfirm = async () => {
@@ -145,6 +146,7 @@ export default function HistoricoMensualTable({
               <th className="text-nowrap">Mes</th>
               <th className="text-nowrap">Línea</th>
               <th className="text-nowrap">Categoría</th>
+              <th className="text-end text-nowrap">Objeto Gasto</th>
               <th className="text-end text-nowrap">Presupuestado</th>
               <th className="text-end text-nowrap">Devengado</th>
               <th className="text-end text-nowrap d-none d-md-table-cell">Aporte Jub.</th>
@@ -170,6 +172,7 @@ export default function HistoricoMensualTable({
                     <small className="text-muted">{mesData.descripcionCategoria}</small>
                   </div>
                 </td>
+                <td className="text-end">{mesData.objetoGasto || '-'}</td>
                 <td className="text-end">{formatCurrency(mesData.presupuestado)}</td>
                 <td className="text-end">{formatCurrency(mesData.devengado)}</td>
                 <td className="text-end d-none d-md-table-cell">
@@ -208,6 +211,7 @@ export default function HistoricoMensualTable({
           <tfoot className="table-light">
             <tr>
               <td colSpan={3}><strong>TOTALES {anioSeleccionado}</strong></td>
+              <td></td>
               <td className="text-end"><strong>{formatCurrency(totales.presupuestado)}</strong></td>
               <td className="text-end"><strong>{formatCurrency(totales.devengado)}</strong></td>
               <td className="text-end d-none d-md-table-cell">

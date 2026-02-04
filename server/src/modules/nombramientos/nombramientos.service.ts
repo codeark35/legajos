@@ -46,9 +46,18 @@ export class NombramientosService {
     const data: any = {
       legajo: { connect: { id: createNombramientoDto.legajoId } },
       cargo: { connect: { id: createNombramientoDto.cargoId } },
+      tipoNombramiento: createNombramientoDto.tipoNombramiento || cargo.nombreCargo,
       fechaInicio: new Date(createNombramientoDto.fechaInicio),
       vigente: createNombramientoDto.vigente ?? true,
     };
+
+    if (createNombramientoDto.categoria) {
+      data.categoria = createNombramientoDto.categoria;
+    }
+
+    if (createNombramientoDto.salarioBase) {
+      data.salarioBase = createNombramientoDto.salarioBase;
+    }
 
     if (createNombramientoDto.fechaFin) {
       data.fechaFin = new Date(createNombramientoDto.fechaFin);
@@ -214,8 +223,24 @@ export class NombramientosService {
       data.fechaFin = new Date(updateNombramientoDto.fechaFin);
     }
 
+    if (updateNombramientoDto.tipoNombramiento) {
+      data.tipoNombramiento = updateNombramientoDto.tipoNombramiento;
+    }
+
+    if (updateNombramientoDto.categoria !== undefined) {
+      data.categoria = updateNombramientoDto.categoria;
+    }
+
+    if (updateNombramientoDto.salarioBase !== undefined) {
+      data.salarioBase = updateNombramientoDto.salarioBase;
+    }
+
     if (updateNombramientoDto.vigente !== undefined) {
       data.vigente = updateNombramientoDto.vigente;
+      // Si se marca como no vigente, actualizar estadoNombramiento a FINALIZADO
+      if (updateNombramientoDto.vigente === false) {
+        data.estadoNombramiento = 'FINALIZADO';
+      }
     }
 
     if (updateNombramientoDto.observaciones !== undefined) {
@@ -350,9 +375,13 @@ export class NombramientosService {
       nombramiento: {
         id: nombramiento.id,
         tipoNombramiento: nombramiento.tipoNombramiento,
+        categoria: nombramiento.categoria,
+        salarioBase: nombramiento.salarioBase,
         cargo: nombramiento.cargo,
         fechaInicio: nombramiento.fechaInicio,
         fechaFin: nombramiento.fechaFin,
+        vigente: nombramiento.vigente,
+        estadoNombramiento: nombramiento.estadoNombramiento,
         legajo: nombramiento.legajo,
       },
       historico,

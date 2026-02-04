@@ -227,11 +227,13 @@ export interface LineaPresupuestaria {
 // Tipos de paginación
 export interface PaginatedResponse<T> {
   data: T[];
-  meta: {
+  pagination: {
     total: number;
     page: number;
-    lastPage: number;
+    totalPages: number;
     limit: number;
+    hasNextPage: boolean;
+    hasPreviousPage: boolean;
   };
 }
 

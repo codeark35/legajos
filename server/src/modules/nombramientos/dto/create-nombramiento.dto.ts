@@ -5,8 +5,11 @@ import {
   IsDateString,
   IsBoolean,
   IsOptional,
+  IsNumber,
+  IsPositive,
 } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
+import { Type } from 'class-transformer';
 
 export class CreateNombramientoDto {
   @ApiProperty({
@@ -24,6 +27,34 @@ export class CreateNombramientoDto {
   @IsUUID()
   @IsNotEmpty()
   cargoId: string;
+
+  @ApiProperty({
+    description: 'Tipo de nombramiento',
+    example: 'Docente Técnico',
+  })
+  @IsString()
+  @IsOptional()
+  tipoNombramiento?: string;
+
+  @ApiProperty({
+    description: 'Categoría del nombramiento',
+    example: 'L33',
+    required: false,
+  })
+  @IsString()
+  @IsOptional()
+  categoria?: string;
+
+  @ApiProperty({
+    description: 'Salario base del nombramiento',
+    example: 2800000,
+    required: false,
+  })
+  @IsNumber()
+  @IsPositive()
+  @IsOptional()
+  @Type(() => Number)
+  salarioBase?: number;
 
   @ApiProperty({
     description: 'Fecha de inicio en formato ISO 8601',
