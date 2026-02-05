@@ -50,6 +50,7 @@ export interface Persona {
 export const EstadoPersona = {
   ACTIVO: 'ACTIVO',
   INACTIVO: 'INACTIVO',
+  SUSPENDIDO: 'SUSPENDIDO'
 } as const;
 
 export type EstadoPersona = (typeof EstadoPersona)[keyof typeof EstadoPersona];

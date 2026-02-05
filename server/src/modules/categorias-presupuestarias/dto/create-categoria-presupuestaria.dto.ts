@@ -1,4 +1,4 @@
-import { ApiProperty } from '@nestjs/swagger';
+import { ApiProperty, ApiPropertyOptional  } from '@nestjs/swagger';
 import { IsString, IsNumber, IsBoolean, IsOptional, Min, MaxLength } from 'class-validator';
 
 export class CreateCategoriaPresupuestariaDto {
@@ -19,6 +19,24 @@ export class CreateCategoriaPresupuestariaDto {
   @IsString()
   @MaxLength(500)
   descripcion: string;
+
+  @ApiProperty({
+    description:'Clasificacion del personal',
+    example:'ADMINISTRATIVO',
+    enum:['DOCENTE', 'ADMINISTRATIVO', 'TECNICO']
+  })
+  @IsOptional()
+  @IsString()
+  tipo?: string;
+
+  @ApiPropertyOptional({
+    description: 'Escala salarial',
+    example: 'ADMINISTRATIVA',
+    enum: ['UNIVERSITARIA', 'ADMINISTRATIVA', 'TECNICO'],
+  })
+  @IsOptional()
+  @IsString()
+  escalaSalarial?: string;
 
   @ApiProperty({
     description: 'Rango salarial mínimo en guaraníes',

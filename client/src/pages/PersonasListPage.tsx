@@ -47,7 +47,7 @@ export default function PersonasListPage() {
           <p className="text-muted mb-0 small">Total: {data?.meta?.total || 0} personas</p>
         </div>
         <div className="col-12 col-md-auto">
-          <Link to="/personas/nueva" className="btn btn-primary">
+          <Link to="/personas/nuevo" className="btn btn-primary">
             <i className="bi bi-plus-circle me-2"></i>
             Nueva Persona
           </Link>

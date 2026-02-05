@@ -1,6 +1,5 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Link } from 'react-router-dom';
 import Layout from '../components/Layout';
 import LoadingSkeleton from '../components/LoadingSkeleton';
 import ErrorAlert from '../components/ErrorAlert';
@@ -15,8 +14,12 @@ export default function CategoriasPresupuestariasPage() {
   const [filterVigente, setFilterVigente] = useState<'all' | 'vigente' | 'no-vigente'>('vigente');
   
   const [formData, setFormData] = useState({
-    codigo: '',
+    codigoCategoria: '',
     descripcion: '',
+    tipo: '',
+    escalaSalarial: '',
+    rangoSalarialMin: '',
+    rangoSalarialMax: '',
     vigente: true,
   });
 
@@ -72,13 +75,25 @@ export default function CategoriasPresupuestariasPage() {
     if (categoria) {
       setEditingCategoria(categoria);
       setFormData({
-        codigo: categoria.codigo,
+        codigoCategoria: categoria.codigoCategoria,
         descripcion: categoria.descripcion,
+        tipo: categoria.tipo || '',
+        escalaSalarial: categoria.escalaSalarial || '',
+        rangoSalarialMin: categoria.rangoSalarialMin?.toString() || '',
+        rangoSalarialMax: categoria.rangoSalarialMax?.toString() || '',
         vigente: categoria.vigente,
       });
     } else {
       setEditingCategoria(null);
-      setFormData({ codigo: '', descripcion: '', vigente: true });
+      setFormData({ 
+        codigoCategoria: '', 
+        descripcion: '', 
+        tipo: '',
+        escalaSalarial: '',
+        rangoSalarialMin: '',
+        rangoSalarialMax: '',
+        vigente: true 
+      });
     }
     setShowModal(true);
   };
@@ -86,17 +101,42 @@ export default function CategoriasPresupuestariasPage() {
   const handleCloseModal = () => {
     setShowModal(false);
     setEditingCategoria(null);
-    setFormData({ codigo: '', descripcion: '', vigente: true });
+    setFormData({ 
+      codigoCategoria: '', 
+      descripcion: '', 
+      tipo: '',
+      escalaSalarial: '',
+      rangoSalarialMin: '',
+      rangoSalarialMax: '',
+      vigente: true 
+    });
   };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     
+    // Transformar los datos antes de enviar
+    const dataToSend = {
+      codigoCategoria: formData.codigoCategoria,
+      descripcion: formData.descripcion,
+      tipo: formData.tipo || undefined,
+      escalaSalarial: formData.escalaSalarial || undefined,
+      rangoSalarialMin: formData.rangoSalarialMin ? Number(formData.rangoSalarialMin) : undefined,
+      rangoSalarialMax: formData.rangoSalarialMax ? Number(formData.rangoSalarialMax) : undefined,
+      vigente: formData.vigente,
+    };
+    
     if (editingCategoria) {
-      updateMutation.mutate({ id: editingCategoria.id, data: formData });
+      updateMutation.mutate({ id: editingCategoria.id, data: dataToSend });
     } else {
-      createMutation.mutate(formData as any);
+      createMutation.mutate(dataToSend as any);
     }
+  };
+
+  // Formatear números con separador de miles
+  const formatNumber = (num: number | undefined) => {
+    if (!num) return '-';
+    return new Intl.NumberFormat('es-PY').format(num);
   };
 
   return (
@@ -148,7 +188,7 @@ export default function CategoriasPresupuestariasPage() {
         <div className="card">
           <div className="card-body">
             {isLoading ? (
-              <LoadingSkeleton rows={5} columns={4} />
+              <LoadingSkeleton rows={5} columns={6} />
             ) : error ? (
               <ErrorAlert error={error} onRetry={refetch} />
             ) : categorias.length === 0 ? (
@@ -170,6 +210,9 @@ export default function CategoriasPresupuestariasPage() {
                     <tr>
                       <th>Código</th>
                       <th>Descripción</th>
+                      <th>Tipo</th>
+                      <th>Escala Salarial</th>
+                      <th>Rango Salarial</th>
                       <th className="text-center">Estado</th>
                       <th className="text-end">Acciones</th>
                     </tr>
@@ -178,9 +221,32 @@ export default function CategoriasPresupuestariasPage() {
                     {categorias.map((categoria) => (
                       <tr key={categoria.id}>
                         <td>
-                          <span className="fw-bold">{categoria.codigo}</span>
+                          <span className="fw-bold">{categoria.codigoCategoria}</span>
                         </td>
                         <td>{categoria.descripcion}</td>
+                        <td>
+                          {categoria.tipo ? (
+                            <span className="badge bg-info">{categoria.tipo}</span>
+                          ) : (
+                            <span className="text-muted">-</span>
+                          )}
+                        </td>
+                        <td>
+                          {categoria.escalaSalarial ? (
+                            <span className="badge bg-secondary">{categoria.escalaSalarial}</span>
+                          ) : (
+                            <span className="text-muted">-</span>
+                          )}
+                        </td>
+                        <td>
+                          {categoria.rangoSalarialMin || categoria.rangoSalarialMax ? (
+                            <small className="text-muted">
+                              ₲ {formatNumber(categoria.rangoSalarialMin)} - ₲ {formatNumber(categoria.rangoSalarialMax)}
+                            </small>
+                          ) : (
+                            <span className="text-muted">-</span>
+                          )}
+                        </td>
                         <td className="text-center">
                           <span
                             className={`badge ${
@@ -223,7 +289,7 @@ export default function CategoriasPresupuestariasPage() {
       {/* Modal */}
       {showModal && (
         <div className="modal show d-block" tabIndex={-1} style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}>
-          <div className="modal-dialog">
+          <div className="modal-dialog modal-lg">
             <div className="modal-content">
               <div className="modal-header">
                 <h5 className="modal-title">
@@ -233,39 +299,114 @@ export default function CategoriasPresupuestariasPage() {
               </div>
               <form onSubmit={handleSubmit}>
                 <div className="modal-body">
-                  <div className="mb-3">
-                    <label className="form-label">Código *</label>
-                    <input
-                      type="text"
-                      className="form-control"
-                      value={formData.codigo}
-                      onChange={(e) => setFormData({ ...formData, codigo: e.target.value })}
-                      required
-                      placeholder="Ej: 111"
-                    />
-                  </div>
-                  <div className="mb-3">
-                    <label className="form-label">Descripción *</label>
-                    <textarea
-                      className="form-control"
-                      value={formData.descripcion}
-                      onChange={(e) => setFormData({ ...formData, descripcion: e.target.value })}
-                      required
-                      rows={3}
-                      placeholder="Descripción de la categoría presupuestaria"
-                    />
-                  </div>
-                  <div className="form-check">
-                    <input
-                      type="checkbox"
-                      className="form-check-input"
-                      id="vigente"
-                      checked={formData.vigente}
-                      onChange={(e) => setFormData({ ...formData, vigente: e.target.checked })}
-                    />
-                    <label className="form-check-label" htmlFor="vigente">
-                      Vigente
-                    </label>
+                  <div className="row g-3">
+                    <div className="col-md-6">
+                      <label className="form-label">Código *</label>
+                      <input
+                        type="text"
+                        className="form-control"
+                        value={formData.codigoCategoria}
+                        onChange={(e) => setFormData({ ...formData, codigoCategoria: e.target.value })}
+                        required
+                        placeholder="Ej: L33"
+                        maxLength={20}
+                      />
+                    </div>
+
+                    <div className="col-md-6">
+                      <label className="form-label">Tipo</label>
+                      <select
+                        className="form-select"
+                        value={formData.tipo}
+                        onChange={(e) => setFormData({ ...formData, tipo: e.target.value })}
+                      >
+                        <option value="">Seleccionar tipo...</option>
+                        <option value="DOCENTE">Docente</option>
+                        <option value="ADMINISTRATIVO">Administrativo</option>
+                        <option value="TECNICO">Técnico</option>
+                      </select>
+                    </div>
+
+                    <div className="col-12">
+                      <label className="form-label">Descripción *</label>
+                      <textarea
+                        className="form-control"
+                        value={formData.descripcion}
+                        onChange={(e) => setFormData({ ...formData, descripcion: e.target.value })}
+                        required
+                        rows={3}
+                        placeholder="Descripción de la categoría presupuestaria"
+                        maxLength={500}
+                      />
+                    </div>
+
+                    {/* <div className="col-md-6">
+                      <label className="form-label">Escala Salarial</label>
+                      <input
+                        type="text"
+                        className="form-control"
+                        value={formData.escalaSalarial}
+                        onChange={(e) => setFormData({ ...formData, escalaSalarial: e.target.value })}
+                        placeholder="Ej: UNIVERSITARIA o ADMINISTRATIVA"
+                      />
+                    </div> */}
+                    <div className="col-md-6">
+                      <label className="form-label">Escala Salarial</label>
+                      <select
+                        className="form-select"
+                        value={formData.escalaSalarial}
+                        onChange={(e) => setFormData({ ...formData, escalaSalarial: e.target.value })}
+                      >
+                        <option value="">Seleccionar tipo...</option>
+                        <option value="UNIVERSITARIA">Universitario</option>
+                        <option value="ADMINISTRATIVA">Administrativo</option>
+                        {/* <option value="TECNICO">Técnico</option> */}
+                      </select>
+                    </div>
+                    <div className="col-md-6">
+                      {/* Espacio vacío para alineación */}
+                    </div>
+
+                    <div className="col-md-6">
+                      <label className="form-label">Rango Salarial Mínimo (₲)</label>
+                      <input
+                        type="number"
+                        className="form-control"
+                        value={formData.rangoSalarialMin}
+                        onChange={(e) => setFormData({ ...formData, rangoSalarialMin: e.target.value })}
+                        placeholder="Ej: 2500000"
+                        min="0"
+                        step="1"
+                      />
+                    </div>
+
+                    <div className="col-md-6">
+                      <label className="form-label">Rango Salarial Máximo (₲)</label>
+                      <input
+                        type="number"
+                        className="form-control"
+                        value={formData.rangoSalarialMax}
+                        onChange={(e) => setFormData({ ...formData, rangoSalarialMax: e.target.value })}
+                        placeholder="Ej: 3500000"
+                        min="0"
+                        step="1"
+                      />
+                    </div>
+
+                    <div className="col-12">
+                      <div className="form-check">
+                        <input
+                          type="checkbox"
+                          className="form-check-input"
+                          id="vigente"
+                          checked={formData.vigente}
+                          onChange={(e) => setFormData({ ...formData, vigente: e.target.checked })}
+                        />
+                        <label className="form-check-label" htmlFor="vigente">
+                          Vigente
+                        </label>
+                      </div>
+                    </div>
                   </div>
                 </div>
                 <div className="modal-footer">

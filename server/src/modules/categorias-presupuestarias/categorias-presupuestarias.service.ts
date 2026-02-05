@@ -26,10 +26,13 @@ export class CategoriasPresupuestariasService {
       );
     }
 
+
     return this.prisma.categoriaPresupuestaria.create({
       data: {
         codigoCategoria: createDto.codigoCategoria,
         descripcion: createDto.descripcion,
+        tipo: createDto.tipo,
+        escalaSalarial: createDto.escalaSalarial,
         rangoSalarialMin: createDto.rangoSalarialMin,
         rangoSalarialMax: createDto.rangoSalarialMax,
         vigente: createDto.vigente ?? true,

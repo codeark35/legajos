@@ -1,32 +1,45 @@
-import { ApiProperty } from '@nestjs/swagger';
-import { IsString, IsBoolean, IsOptional, MaxLength } from 'class-validator';
+import {
+  IsString,
+  IsNotEmpty,
+  IsOptional,
+  IsBoolean,
+  MaxLength,
+} from 'class-validator';
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
 export class CreateLineaPresupuestariaDto {
   @ApiProperty({
-    description: 'Código de la línea presupuestaria',
-    example: '100-001',
-    maxLength: 20,
+    description: 'Código único de la línea presupuestaria',
+    example: '100',
   })
   @IsString()
-  @MaxLength(20)
-  codigoLinea: string;
+  @IsNotEmpty()
+  codigoLinea: string; // ✅ REQUERIDO (no tiene ? ni @default)
 
-  @ApiProperty({
+  @ApiPropertyOptional({
     description: 'Descripción de la línea presupuestaria',
-    example: 'Personal docente permanente',
-    maxLength: 500,
+    example: 'Remuneraciones del personal docente',
   })
+  @IsOptional()
   @IsString()
-  @MaxLength(500)
-  descripcion: string;
+  descripcion?: string; 
 
-  @ApiProperty({
-    description: 'Indica si la línea está vigente',
+  @ApiPropertyOptional({
+    description: 'Tipo de línea presupuestaria',
+    example: 'DOCENTE',
+    enum: ['DOCENTE', 'ADMINISTRATIVO', 'TECNICO'],
+  })
+  @IsOptional()
+  @IsString()
+  tipo?: string; 
+
+
+  @ApiPropertyOptional({
+    description: 'Indica si la línea presupuestaria está vigente',
     example: true,
     default: true,
-    required: false,
   })
-  @IsBoolean()
   @IsOptional()
-  vigente?: boolean;
+  @IsBoolean()
+  vigente?: boolean; // ✅ OPCIONAL (@default(true))
 }

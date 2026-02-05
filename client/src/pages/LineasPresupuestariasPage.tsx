@@ -1,33 +1,42 @@
-import { useState } from 'react';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Link } from 'react-router-dom';
-import Layout from '../components/Layout';
-import LoadingSkeleton from '../components/LoadingSkeleton';
-import ErrorAlert from '../components/ErrorAlert';
-import EmptyState from '../components/EmptyState';
-import { useToast } from '../components/ToastContainer';
-import lineasService from '../services/lineas.service';
-import type { LineaPresupuestaria } from '../types';
+import { useState } from "react";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import Layout from "../components/Layout";
+import LoadingSkeleton from "../components/LoadingSkeleton";
+import ErrorAlert from "../components/ErrorAlert";
+import EmptyState from "../components/EmptyState";
+import { useToast } from "../components/ToastContainer";
+import lineasService from "../services/lineas.service";
+import type { LineaPresupuestaria } from "../types";
 
 export default function LineasPresupuestariasPage() {
   const [showModal, setShowModal] = useState(false);
-  const [editingLinea, setEditingLinea] = useState<LineaPresupuestaria | null>(null);
-  const [filterVigente, setFilterVigente] = useState<'all' | 'vigente' | 'no-vigente'>('vigente');
-  
+  const [editingLinea, setEditingLinea] = useState<LineaPresupuestaria | null>(
+    null,
+  );
+  const [filterVigente, setFilterVigente] = useState<
+    "all" | "vigente" | "no-vigente"
+  >("vigente");
+
   const [formData, setFormData] = useState({
-    codigo: '',
-    descripcion: '',
+    codigoLinea: "",
+    descripcion: "",
+    tipo: "",
     vigente: true,
   });
 
   const toast = useToast();
   const queryClient = useQueryClient();
 
-  const { data: lineas = [], isLoading, error, refetch } = useQuery({
-    queryKey: ['lineas-presupuestarias', filterVigente],
+  const {
+    data: lineas = [],
+    isLoading,
+    error,
+    refetch,
+  } = useQuery({
+    queryKey: ["lineas-presupuestarias", filterVigente],
     queryFn: () => {
-      if (filterVigente === 'all') return lineasService.getAll();
-      if (filterVigente === 'vigente') return lineasService.getAll(true);
+      if (filterVigente === "all") return lineasService.getAll();
+      if (filterVigente === "vigente") return lineasService.getAll(true);
       return lineasService.getAll(false);
     },
   });
@@ -35,36 +44,41 @@ export default function LineasPresupuestariasPage() {
   const createMutation = useMutation({
     mutationFn: lineasService.create,
     onSuccess: () => {
-      toast.success('Línea creada exitosamente');
-      queryClient.invalidateQueries({ queryKey: ['lineas-presupuestarias'] });
+      toast.success("Línea creada exitosamente");
+      queryClient.invalidateQueries({ queryKey: ["lineas-presupuestarias"] });
       handleCloseModal();
     },
     onError: (error: any) => {
-      toast.error(error.response?.data?.message || 'Error al crear línea');
+      toast.error(error.response?.data?.message || "Error al crear línea");
     },
   });
 
   const updateMutation = useMutation({
-    mutationFn: ({ id, data }: { id: string; data: Partial<LineaPresupuestaria> }) =>
-      lineasService.update(id, data),
+    mutationFn: ({
+      id,
+      data,
+    }: {
+      id: string;
+      data: Partial<LineaPresupuestaria>;
+    }) => lineasService.update(id, data),
     onSuccess: () => {
-      toast.success('Línea actualizada exitosamente');
-      queryClient.invalidateQueries({ queryKey: ['lineas-presupuestarias'] });
+      toast.success("Línea actualizada exitosamente");
+      queryClient.invalidateQueries({ queryKey: ["lineas-presupuestarias"] });
       handleCloseModal();
     },
     onError: (error: any) => {
-      toast.error(error.response?.data?.message || 'Error al actualizar línea');
+      toast.error(error.response?.data?.message || "Error al actualizar línea");
     },
   });
 
   const toggleVigenteMutation = useMutation({
     mutationFn: lineasService.toggleVigente,
     onSuccess: () => {
-      toast.success('Estado actualizado exitosamente');
-      queryClient.invalidateQueries({ queryKey: ['lineas-presupuestarias'] });
+      toast.success("Estado actualizado exitosamente");
+      queryClient.invalidateQueries({ queryKey: ["lineas-presupuestarias"] });
     },
     onError: (error: any) => {
-      toast.error(error.response?.data?.message || 'Error al cambiar estado');
+      toast.error(error.response?.data?.message || "Error al cambiar estado");
     },
   });
 
@@ -72,13 +86,19 @@ export default function LineasPresupuestariasPage() {
     if (linea) {
       setEditingLinea(linea);
       setFormData({
-        codigo: linea.codigo,
-        descripcion: linea.descripcion,
+        codigoLinea: linea.codigoLinea,
+        descripcion: linea.descripcion || "", // ✅ Agregado || ''
+        tipo: linea.tipo || "", // ✅ Agregado
         vigente: linea.vigente,
       });
     } else {
       setEditingLinea(null);
-      setFormData({ codigo: '', descripcion: '', vigente: true });
+      setFormData({
+        codigoLinea: "",
+        descripcion: "",
+        tipo: "",
+        vigente: true,
+      });
     }
     setShowModal(true);
   };
@@ -86,12 +106,16 @@ export default function LineasPresupuestariasPage() {
   const handleCloseModal = () => {
     setShowModal(false);
     setEditingLinea(null);
-    setFormData({ codigo: '', descripcion: '', vigente: true });
+    setFormData({
+      codigoLinea: "",
+      descripcion: "",
+      tipo: "",
+      vigente: true,
+    });
   };
-
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (editingLinea) {
       updateMutation.mutate({ id: editingLinea.id, data: formData });
     } else {
@@ -111,7 +135,9 @@ export default function LineasPresupuestariasPage() {
                   <i className="bi bi-list-ol me-2"></i>
                   Líneas Presupuestarias
                 </h1>
-                <p className="text-muted mb-0">Gestión de líneas presupuestarias del sistema</p>
+                <p className="text-muted mb-0">
+                  Gestión de líneas presupuestarias del sistema
+                </p>
               </div>
               <button
                 className="btn btn-primary"
@@ -157,7 +183,10 @@ export default function LineasPresupuestariasPage() {
                 title="No hay líneas presupuestarias"
                 description="Comienza agregando la primera línea presupuestaria"
                 action={
-                  <button className="btn btn-primary" onClick={() => handleOpenModal()}>
+                  <button
+                    className="btn btn-primary"
+                    onClick={() => handleOpenModal()}
+                  >
                     <i className="bi bi-plus-lg me-2"></i>
                     Nueva Línea
                   </button>
@@ -178,16 +207,16 @@ export default function LineasPresupuestariasPage() {
                     {lineas.map((linea) => (
                       <tr key={linea.id}>
                         <td>
-                          <span className="fw-bold">{linea.codigo}</span>
+                          <span className="fw-bold">{linea.codigoLinea}</span>
                         </td>
                         <td>{linea.descripcion}</td>
                         <td className="text-center">
                           <span
                             className={`badge ${
-                              linea.vigente ? 'bg-success' : 'bg-secondary'
+                              linea.vigente ? "bg-success" : "bg-secondary"
                             }`}
                           >
-                            {linea.vigente ? 'Vigente' : 'No Vigente'}
+                            {linea.vigente ? "Vigente" : "No Vigente"}
                           </span>
                         </td>
                         <td className="text-end">
@@ -201,12 +230,22 @@ export default function LineasPresupuestariasPage() {
                             </button>
                             <button
                               className={`btn ${
-                                linea.vigente ? 'btn-outline-warning' : 'btn-outline-success'
+                                linea.vigente
+                                  ? "btn-outline-warning"
+                                  : "btn-outline-success"
                               }`}
-                              onClick={() => toggleVigenteMutation.mutate(linea.id)}
-                              title={linea.vigente ? 'Marcar como no vigente' : 'Marcar como vigente'}
+                              onClick={() =>
+                                toggleVigenteMutation.mutate(linea.id)
+                              }
+                              title={
+                                linea.vigente
+                                  ? "Marcar como no vigente"
+                                  : "Marcar como vigente"
+                              }
                             >
-                              <i className={`bi ${linea.vigente ? 'bi-x-circle' : 'bi-check-circle'}`}></i>
+                              <i
+                                className={`bi ${linea.vigente ? "bi-x-circle" : "bi-check-circle"}`}
+                              ></i>
                             </button>
                           </div>
                         </td>
@@ -222,14 +261,22 @@ export default function LineasPresupuestariasPage() {
 
       {/* Modal */}
       {showModal && (
-        <div className="modal show d-block" tabIndex={-1} style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}>
+        <div
+          className="modal show d-block"
+          tabIndex={-1}
+          style={{ backgroundColor: "rgba(0,0,0,0.5)" }}
+        >
           <div className="modal-dialog">
             <div className="modal-content">
               <div className="modal-header">
                 <h5 className="modal-title">
-                  {editingLinea ? 'Editar Línea' : 'Nueva Línea'} Presupuestaria
+                  {editingLinea ? "Editar Línea" : "Nueva Línea"} Presupuestaria
                 </h5>
-                <button type="button" className="btn-close" onClick={handleCloseModal}></button>
+                <button
+                  type="button"
+                  className="btn-close"
+                  onClick={handleCloseModal}
+                ></button>
               </div>
               <form onSubmit={handleSubmit}>
                 <div className="modal-body">
@@ -238,8 +285,13 @@ export default function LineasPresupuestariasPage() {
                     <input
                       type="text"
                       className="form-control"
-                      value={formData.codigo}
-                      onChange={(e) => setFormData({ ...formData, codigo: e.target.value })}
+                      value={formData.codigoLinea}
+                      onChange={(e) =>
+                        setFormData({
+                          ...formData,
+                          codigoLinea: e.target.value,
+                        })
+                      }
                       required
                       placeholder="Ej: 110"
                     />
@@ -249,19 +301,42 @@ export default function LineasPresupuestariasPage() {
                     <textarea
                       className="form-control"
                       value={formData.descripcion}
-                      onChange={(e) => setFormData({ ...formData, descripcion: e.target.value })}
+                      onChange={(e) =>
+                        setFormData({
+                          ...formData,
+                          descripcion: e.target.value,
+                        })
+                      }
                       required
                       rows={3}
                       placeholder="Descripción de la línea presupuestaria"
                     />
                   </div>
+                  <div className="mb-3">
+                    <label className="form-label">Tipo</label>
+                    <select
+                      className="form-select"
+                      value={formData.tipo}
+                      onChange={(e) =>
+                        setFormData({ ...formData, tipo: e.target.value })
+                      }
+                    >
+                      <option value="">Seleccionar tipo...</option>
+                      <option value="DOCENTE">Docente</option>
+                      <option value="ADMINISTRATIVO">Administrativo</option>
+                      <option value="TECNICO">Técnico</option>
+                    </select>
+                  </div>
+
                   <div className="form-check">
                     <input
                       type="checkbox"
                       className="form-check-input"
                       id="vigente"
                       checked={formData.vigente}
-                      onChange={(e) => setFormData({ ...formData, vigente: e.target.checked })}
+                      onChange={(e) =>
+                        setFormData({ ...formData, vigente: e.target.checked })
+                      }
                     />
                     <label className="form-check-label" htmlFor="vigente">
                       Vigente
@@ -269,18 +344,24 @@ export default function LineasPresupuestariasPage() {
                   </div>
                 </div>
                 <div className="modal-footer">
-                  <button type="button" className="btn btn-secondary" onClick={handleCloseModal}>
+                  <button
+                    type="button"
+                    className="btn btn-secondary"
+                    onClick={handleCloseModal}
+                  >
                     Cancelar
                   </button>
                   <button
                     type="submit"
                     className="btn btn-primary"
-                    disabled={createMutation.isPending || updateMutation.isPending}
+                    disabled={
+                      createMutation.isPending || updateMutation.isPending
+                    }
                   >
                     {(createMutation.isPending || updateMutation.isPending) && (
                       <span className="spinner-border spinner-border-sm me-2"></span>
                     )}
-                    {editingLinea ? 'Actualizar' : 'Crear'}
+                    {editingLinea ? "Actualizar" : "Crear"}
                   </button>
                 </div>
               </form>
