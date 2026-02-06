@@ -18,6 +18,8 @@ import NombramientoFormPage from './pages/NombramientoFormPage';
 import FinalizarNombramientoPage from './pages/FinalizarNombramientoPage';
 import LineasPresupuestariasPage from './pages/LineasPresupuestariasPage';
 import CategoriasPresupuestariasPage from './pages/CategoriasPresupuestariasPage';
+import CargosListPage from './pages/CargosListPage';
+import CargosFormPage from './pages/CargosFormPage';
 
 // Bootstrap CSS
 import 'bootstrap/dist/css/bootstrap.min.css';
@@ -199,6 +201,32 @@ function App() {
                 element={
                   <PrivateRoute>
                     <CategoriasPresupuestariasPage />
+                  </PrivateRoute>
+                }
+              />
+
+              {/* Rutas de Cargos */}
+              <Route
+                path="/cargos"
+                element={
+                  <PrivateRoute>
+                    <CargosListPage />
+                  </PrivateRoute>
+                }
+              />
+              <Route
+                path="/cargos/nuevo"
+                element={
+                  <PrivateRoute>
+                    <CargosFormPage />
+                  </PrivateRoute>
+                }
+              />
+              <Route
+                path="/cargos/:id/editar"
+                element={
+                  <PrivateRoute>
+                    <CargosFormPage />
                   </PrivateRoute>
                 }
               />

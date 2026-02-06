@@ -9,7 +9,6 @@ async function main() {
   // Limpiar datos existentes
   console.log('🧹 Limpiando datos existentes...');
   await prisma.historialCambio.deleteMany({});
-  await prisma.asignacionPresupuestaria.deleteMany({});
   await prisma.nombramiento.deleteMany({});
   await prisma.documento.deleteMany({});
   await prisma.legajo.deleteMany({});
@@ -29,7 +28,7 @@ async function main() {
   const usuarios = await Promise.all([
     prisma.usuario.create({
       data: {
-        email: 'admin@unae.edu.py',
+        email: 'admin@uni.edu.py',
         nombreUsuario: 'Administrador',
         passwordHash: passwordHash,
         rol: 'ADMIN',
@@ -38,7 +37,7 @@ async function main() {
     }),
     prisma.usuario.create({
       data: {
-        email: 'usuario@unae.edu.py',
+        email: 'usuario@uni.edu.py',
         nombreUsuario: 'Usuario Regular',
         passwordHash: await bcrypt.hash('Usuario123!', 10),
         rol: 'USUARIO',
@@ -215,7 +214,7 @@ async function main() {
         fechaNacimiento: new Date('1970-01-01'),
         direccion: 'Encarnación, Paraguay',
         telefono: '(059571) 206 990',
-        email: 'mnunez@unae.edu.py',
+        email: 'mnunez@uni.edu.py',
         estado: 'ACTIVO',
       },
     }),
@@ -227,7 +226,7 @@ async function main() {
         fechaNacimiento: new Date('1975-03-15'),
         direccion: 'Encarnación, Paraguay',
         telefono: '(059571) 208 123',
-        email: 'jgonzalez@unae.edu.py',
+        email: 'jgonzalez@uni.edu.py',
         estado: 'ACTIVO',
       },
     }),
@@ -239,7 +238,7 @@ async function main() {
         fechaNacimiento: new Date('1982-07-22'),
         direccion: 'Encarnación, Paraguay',
         telefono: '(059571) 209 456',
-        email: 'afernandez@unae.edu.py',
+        email: 'afernandez@uni.edu.py',
         estado: 'ACTIVO',
       },
     }),
@@ -251,7 +250,7 @@ async function main() {
         fechaNacimiento: new Date('1968-11-05'),
         direccion: 'Encarnación, Paraguay',
         telefono: '(059571) 210 789',
-        email: 'rmartinez@unae.edu.py',
+        email: 'rmartinez@uni.edu.py',
         estado: 'ACTIVO',
       },
     }),
@@ -263,7 +262,7 @@ async function main() {
         fechaNacimiento: new Date('1990-02-14'),
         direccion: 'Encarnación, Paraguay',
         telefono: '(059571) 211 012',
-        email: 'lrodriguez@unae.edu.py',
+        email: 'lrodriguez@uni.edu.py',
         estado: 'ACTIVO',
       },
     }),
@@ -344,10 +343,10 @@ async function main() {
   });
   console.log('✅ Resolución creada:', resolucion.numeroResolucion);
 
-  // 9. Crear Nombramientos con AsignacionPresupuestaria
-  console.log('📋 Creando nombramientos con asignaciones...');
+  // 9. Crear Nombramientos con histórico mensual integrado
+  console.log('📋 Creando nombramientos con datos presupuestarios...');
 
-  // Nombramiento 1
+  // Nombramiento 1 - Docente Técnico L33
   const nombramiento1 = await prisma.nombramiento.create({
     data: {
       legajoId: legajos[0].id,
@@ -361,34 +360,35 @@ async function main() {
       vigente: true,
       estadoNombramiento: 'VIGENTE',
       observaciones: 'Nombramiento vigente como Docente Técnico',
-    },
-  });
-
-  await prisma.asignacionPresupuestaria.create({
-    data: {
-      nombramientoId: nombramiento1.id,
-      categoriaPresupuestariaId: categorias[0].id,
-      lineaPresupuestariaId: lineas[0].id,
-      objetoGasto: '110',
-      salarioBase: 2800000,
-      moneda: 'PYG',
       historicoMensual: {
-        '2026': {
-          '01': {
-            presupuestado: 2800000,
-            devengado: 2800000,
-            horasExtras: 0,
-            bonificaciones: 0,
-            descuentos: 0,
-            montoTotal: 2800000,
-          },
+        '2026-01': {
+          lineaPresupuestariaId: lineas[0].id,
+          categoriaPresupuestariaId: categorias[0].id,
+          objetoGasto: '110',
+          presupuestado: 2800000,
+          devengado: 2800000,
+          horasExtras: 0,
+          bonificaciones: 0,
+          descuentos: 0,
+          montoTotal: 2800000,
+          observaciones: 'Primer mes de nombramiento',
+        },
+        '2026-02': {
+          lineaPresupuestariaId: lineas[0].id,
+          categoriaPresupuestariaId: categorias[0].id,
+          objetoGasto: '110',
+          presupuestado: 2800000,
+          devengado: 2800000,
+          horasExtras: 0,
+          bonificaciones: 0,
+          descuentos: 0,
+          montoTotal: 2800000,
         },
       },
-      usuarioUltimaActualizacion: usuarios[0].email,
     },
   });
 
-  // Nombramiento 2
+  // Nombramiento 2 - Director de Carrera UU5
   const nombramiento2 = await prisma.nombramiento.create({
     data: {
       legajoId: legajos[1].id,
@@ -402,44 +402,36 @@ async function main() {
       vigente: true,
       estadoNombramiento: 'VIGENTE',
       observaciones: 'Director de Ingeniería',
-    },
-  });
-
-  await prisma.asignacionPresupuestaria.create({
-    data: {
-      nombramientoId: nombramiento2.id,
-      categoriaPresupuestariaId: categorias[1].id,
-      lineaPresupuestariaId: lineas[0].id,
-      objetoGasto: '110',
-      salarioBase: 4000000,
-      moneda: 'PYG',
       historicoMensual: {
-        '2025': {
-          '12': {
-            presupuestado: 4000000,
-            devengado: 4000000,
-            horasExtras: 0,
-            bonificaciones: 200000,
-            descuentos: 0,
-            montoTotal: 4200000,
-          },
+        '2025-12': {
+          lineaPresupuestariaId: lineas[0].id,
+          categoriaPresupuestariaId: categorias[1].id,
+          objetoGasto: '110',
+          presupuestado: 4000000,
+          devengado: 4000000,
+          horasExtras: 0,
+          bonificaciones: 200000,
+          descuentos: 0,
+          montoTotal: 4200000,
+          observaciones: 'Incluye bonificación por cargo directivo',
         },
-        '2026': {
-          '01': {
-            presupuestado: 4000000,
-            devengado: 4000000,
-            horasExtras: 0,
-            bonificaciones: 200000,
-            descuentos: 0,
-            montoTotal: 4200000,
-          },
+        '2026-01': {
+          lineaPresupuestariaId: lineas[0].id,
+          categoriaPresupuestariaId: categorias[1].id,
+          objetoGasto: '110',
+          presupuestado: 4000000,
+          devengado: 4000000,
+          horasExtras: 0,
+          bonificaciones: 200000,
+          descuentos: 0,
+          montoTotal: 4200000,
+          observaciones: 'Continúa con bonificación',
         },
       },
-      usuarioUltimaActualizacion: usuarios[0].email,
     },
   });
 
-  // Nombramiento 3
+  // Nombramiento 3 - Encargado de Cátedra L23 (Finalizado)
   const nombramiento3 = await prisma.nombramiento.create({
     data: {
       legajoId: legajos[3].id,
@@ -453,35 +445,121 @@ async function main() {
       moneda: 'PYG',
       vigente: false,
       estadoNombramiento: 'FINALIZADO',
-      observaciones: 'Nombramiento finalizado',
-    },
-  });
-
-  await prisma.asignacionPresupuestaria.create({
-    data: {
-      nombramientoId: nombramiento3.id,
-      categoriaPresupuestariaId: categorias[2].id,
-      lineaPresupuestariaId: lineas[0].id,
-      objetoGasto: '110',
-      salarioBase: 1200000,
-      moneda: 'PYG',
+      observaciones: 'Nombramiento finalizado al término del período académico',
       historicoMensual: {
-        '2025': {
-          '12': {
-            presupuestado: 1200000,
-            devengado: 1200000,
-            horasExtras: 0,
-            bonificaciones: 0,
-            descuentos: 0,
-            montoTotal: 1200000,
-          },
+        '2025-11': {
+          lineaPresupuestariaId: lineas[0].id,
+          categoriaPresupuestariaId: categorias[2].id,
+          objetoGasto: '110',
+          presupuestado: 1200000,
+          devengado: 1200000,
+          horasExtras: 0,
+          bonificaciones: 0,
+          descuentos: 0,
+          montoTotal: 1200000,
+        },
+        '2025-12': {
+          lineaPresupuestariaId: lineas[0].id,
+          categoriaPresupuestariaId: categorias[2].id,
+          objetoGasto: '110',
+          presupuestado: 1200000,
+          devengado: 1200000,
+          horasExtras: 0,
+          bonificaciones: 0,
+          descuentos: 0,
+          montoTotal: 1200000,
+          observaciones: 'Último mes del nombramiento',
         },
       },
-      usuarioUltimaActualizacion: usuarios[0].email,
     },
   });
 
-  console.log('✅ 3 nombramientos creados con sus asignaciones presupuestarias');
+  // Nombramiento 4 - Auxiliar de Enseñanza B06
+  const nombramiento4 = await prisma.nombramiento.create({
+    data: {
+      legajoId: legajos[4].id,
+      cargoId: cargos[3].id,
+      tipoNombramiento: 'Auxiliar de Enseñanza',
+      categoria: 'B06',
+      fechaInicio: new Date('2025-08-01'),
+      resolucionId: resolucion.id,
+      salarioBase: 300000,
+      moneda: 'PYG',
+      vigente: true,
+      estadoNombramiento: 'VIGENTE',
+      observaciones: 'Auxiliar docente recién incorporado',
+      historicoMensual: {
+        '2025-12': {
+          lineaPresupuestariaId: lineas[0].id,
+          categoriaPresupuestariaId: categorias[3].id,
+          objetoGasto: '110',
+          presupuestado: 300000,
+          devengado: 300000,
+          horasExtras: 50000,
+          bonificaciones: 0,
+          descuentos: 0,
+          montoTotal: 350000,
+          observaciones: 'Incluye horas extras por período de exámenes',
+        },
+        '2026-01': {
+          lineaPresupuestariaId: lineas[0].id,
+          categoriaPresupuestariaId: categorias[3].id,
+          objetoGasto: '110',
+          presupuestado: 300000,
+          devengado: 300000,
+          horasExtras: 0,
+          bonificaciones: 0,
+          descuentos: 0,
+          montoTotal: 300000,
+        },
+      },
+    },
+  });
+
+  // Nombramiento 5 - Profesor académico
+  const nombramiento5 = await prisma.nombramiento.create({
+    data: {
+      legajoId: legajos[2].id,
+      cargoId: cargos[4].id,
+      tipoNombramiento: 'Profesor',
+      categoria: 'L33',
+      fechaInicio: new Date('2010-06-15'),
+      resolucionId: resolucion.id,
+      salarioBase: 2600000,
+      moneda: 'PYG',
+      vigente: true,
+      estadoNombramiento: 'VIGENTE',
+      observaciones: 'Profesor con antigüedad en la institución',
+      historicoMensual: {
+        '2025-12': {
+          lineaPresupuestariaId: lineas[0].id,
+          categoriaPresupuestariaId: categorias[0].id,
+          objetoGasto: '110',
+          presupuestado: 2600000,
+          devengado: 2600000,
+          horasExtras: 0,
+          bonificaciones: 150000,
+          descuentos: 50000,
+          montoTotal: 2700000,
+          observaciones: 'Bonificación por antigüedad, descuento IPS',
+        },
+        '2026-01': {
+          lineaPresupuestariaId: lineas[0].id,
+          categoriaPresupuestariaId: categorias[0].id,
+          objetoGasto: '110',
+          presupuestado: 2600000,
+          devengado: 2600000,
+          horasExtras: 0,
+          bonificaciones: 150000,
+          descuentos: 50000,
+          montoTotal: 2700000,
+          observaciones: 'Continúa con bonificación por antigüedad',
+        },
+      },
+    },
+  });
+
+  console.log('✅ 5 nombramientos creados con datos históricos presupuestarios');
 
   // 10. Crear registros de auditoría
   console.log('📝 Creando registros de auditoría...');
@@ -515,18 +593,18 @@ async function main() {
 
   console.log('\n🎉 ¡Seed completado exitosamente!');
   console.log('\n📊 Resumen:');
+  console.log(`  - ${usuarios.length} usuarios`);
   console.log(`  - ${categorias.length} categorías presupuestarias`);
   console.log(`  - ${lineas.length} líneas presupuestarias`);
   console.log(`  - ${facultades.length} facultades`);
   console.log(`  - ${cargos.length} cargos`);
   console.log(`  - ${personas.length} personas`);
   console.log(`  - ${legajos.length} legajos`);
-  console.log(`  - 3 nombramientos con asignaciones`);
-  console.log(`  - ${usuarios.length} usuarios`);
+  console.log(`  - 5 nombramientos con histórico mensual`);
   console.log(`  - 2 registros de auditoría`);
   console.log('\n👤 Credenciales de acceso:');
-  console.log(`  Admin: admin@unae.edu.py / Admin123!`);
-  console.log(`  Usuario: usuario@unae.edu.py / Usuario123!`);
+  console.log(`  Admin: admin@uni.edu.py / Admin123!`);
+  console.log(`  Usuario: usuario@uni.edu.py / Usuario123!`);
 }
 
 main()
